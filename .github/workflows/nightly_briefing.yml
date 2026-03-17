@@ -2,21 +2,13 @@ name: Nightly Morning Briefing
 
 on:
   schedule:
-    # 10:00 PM Eastern Time = 02:00 UTC (EST) / 03:00 UTC (EDT)
-    # GitHub Actions uses UTC. Adjust if your timezone observes daylight saving.
-    # EST (Nov–Mar): 10 PM ET = 03:00 UTC  → "0 3 * * *"
-    # EDT (Mar–Nov): 10 PM ET = 02:00 UTC  → "0 2 * * *"
-    # Using 02:00 UTC (covers EDT / summer schedule):
     - cron: "0 2 * * *"
-
-  # Allows you to run the workflow manually from the GitHub Actions tab
   workflow_dispatch:
 
 jobs:
-  send-briefing:
+  teaneck-briefing:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -32,26 +24,64 @@ jobs:
       - name: Install Playwright browser
         run: playwright install chromium --with-deps
 
-      - name: Run Morning Briefing pipeline
+      - name: Run Teaneck Daily Summary
         env:
-          # ── Radius credentials ────────────────────────────────────────────
-          RADIUS_URL:          ${{ secrets.RADIUS_URL }}
-          RADIUS_USERNAME:     ${{ secrets.RADIUS_USERNAME }}
-          RADIUS_PASSWORD:     ${{ secrets.RADIUS_PASSWORD }}
-          RADIUS_REPORT_URL:   ${{ secrets.RADIUS_REPORT_URL }}
-          # ── Claude API ────────────────────────────────────────────────────
-          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
-          # ── Email sending ─────────────────────────────────────────────────
-          SMTP_USER:           ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:       ${{ secrets.SMTP_PASSWORD }}
-          REPORT_RECIPIENTS:   ${{ secrets.REPORT_RECIPIENTS }}
-          CENTER_NAME:         ${{ secrets.CENTER_NAME }}
-        run: python main.py
+          RADIUS_URL:        ${{ secrets.RADIUS_URL }}
+          RADIUS_USERNAME:   ${{ secrets.RADIUS_USERNAME }}
+          RADIUS_PASSWORD:   ${{ secrets.RADIUS_PASSWORD }}
+          RADIUS_REPORT_URL: ${{ secrets.RADIUS_REPORT_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_USER:         ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:     ${{ secrets.SMTP_PASSWORD }}
+          REPORT_RECIPIENTS: ${{ secrets.REPORT_RECIPIENTS }}
+          CENTER_NAME:       ${{ secrets.CENTER_NAME }}
+          GH_USERNAME:       ${{ secrets.GH_USERNAME }}
+        run: python main.py --center Teaneck
 
-      - name: Upload CSV artifact (for debugging)
+      - name: Upload Teaneck CSV
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: radius-csv-${{ github.run_id }}
+          name: teaneck-csv-${{ github.run_id }}
+          path: downloads/
+          retention-days: 7
+
+  englewood-briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install chromium --with-deps
+
+      - name: Run Englewood Daily Summary
+        env:
+          RADIUS_URL:        ${{ secrets.RADIUS_URL }}
+          RADIUS_USERNAME:   ${{ secrets.RADIUS_USERNAME }}
+          RADIUS_PASSWORD:   ${{ secrets.RADIUS_PASSWORD }}
+          RADIUS_REPORT_URL: ${{ secrets.RADIUS_REPORT_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_USER:         ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:     ${{ secrets.SMTP_PASSWORD }}
+          REPORT_RECIPIENTS: ${{ secrets.ENGLEWOOD_RECIPIENTS }}
+          CENTER_NAME:       ${{ secrets.ENGLEWOOD_CENTER_NAME }}
+          GH_USERNAME:       ${{ secrets.GH_USERNAME }}
+        run: python main.py --center Englewood
+
+      - name: Upload Englewood CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: englewood-csv-${{ github.run_id }}
           path: downloads/
           retention-days: 7
