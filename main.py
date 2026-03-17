@@ -1,17 +1,14 @@
 """
 main.py
 Orchestrates the full nightly pipeline:
-  1. Scrape Radius → download CSV
-  2. Parse CSV → structured data
+  1. Scrape Radius → download Excel for the given center
+  2. Parse Excel → structured data
   3. Generate AI content via Claude API
   4. Render + send HTML email
-
-Run manually:  python main.py
-Run with file: python main.py --csv path/to/file.csv   (skips scraping, useful for testing)
 """
 
 import argparse
-import sys
+import os
 from datetime import date
 
 from parse    import parse_report
@@ -19,21 +16,24 @@ from generate import generate_all
 from send     import send_report
 
 
-def run(csv_path: str = None, report_date: date = None):
+def run(center_name: str = None, xlsx_path: str = None, report_date: date = None):
     if report_date is None:
         report_date = date.today()
 
-    # ── Step 1: Scrape (or use provided CSV) ─────────────────────────────────
-    if csv_path is None:
-        print("=== Step 1: Scraping Radius ===")
+    if center_name is None:
+        center_name = os.environ.get("CENTER_NAME", "Teaneck")
+
+    # ── Step 1: Scrape (or use provided file) ─────────────────────────────────
+    if xlsx_path is None:
+        print(f"=== Step 1: Scraping Radius for {center_name} ===")
         from scrape import scrape_radius_report
-        csv_path = scrape_radius_report(report_date)
+        xlsx_path = scrape_radius_report(center_name, report_date)
     else:
-        print(f"=== Step 1: Using provided CSV: {csv_path} ===")
+        print(f"=== Step 1: Using provided file: {xlsx_path} ===")
 
     # ── Step 2: Parse ─────────────────────────────────────────────────────────
-    print("=== Step 2: Parsing CSV ===")
-    data = parse_report(csv_path, report_date)
+    print("=== Step 2: Parsing report ===")
+    data = parse_report(xlsx_path, report_date)
     print(f"    {data['total_sessions']} sessions, {data['unique_students']} students parsed.")
 
     # ── Step 3: Generate AI content ───────────────────────────────────────────
@@ -49,9 +49,10 @@ def run(csv_path: str = None, report_date: date = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Radius Morning Briefing Automation")
-    parser.add_argument("--csv", help="Path to CSV file (skips Radius scraping)", default=None)
-    parser.add_argument("--date", help="Report date as YYYY-MM-DD (defaults to today)", default=None)
+    parser.add_argument("--center", help="Center name: Teaneck or Englewood", default=None)
+    parser.add_argument("--xlsx",   help="Path to Excel file (skips scraping)", default=None)
+    parser.add_argument("--date",   help="Report date as YYYY-MM-DD (defaults to today)", default=None)
     args = parser.parse_args()
 
     report_date = date.fromisoformat(args.date) if args.date else date.today()
-    run(csv_path=args.csv, report_date=report_date)
+    run(center_name=args.center, xlsx_path=args.xlsx, report_date=report_date)
