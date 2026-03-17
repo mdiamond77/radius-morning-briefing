@@ -18,7 +18,7 @@ RECIPIENTS    = os.environ["REPORT_RECIPIENTS"]
 CENTER_NAME   = os.environ.get("CENTER_NAME", "Teaneck")
 
 # Logo hosted on GitHub — update YOUR_GITHUB_USERNAME below
-GITHUB_USER   = os.environ.get("GITHUB_USERNAME", "YOUR_GITHUB_USERNAME")
+GITHUB_USER   = os.environ.get("GH_USERNAME", "YOUR_GITHUB_USERNAME")
 LOGO_URL      = f"https://raw.githubusercontent.com/{GITHUB_USER}/radius-morning-briefing/main/logo.jpg"
 # ──────────────────────────────────────────────────────────────────────────────
 
