@@ -18,7 +18,7 @@ RECIPIENTS    = os.environ["REPORT_RECIPIENTS"]
 CENTER_NAME   = os.environ.get("CENTER_NAME", "Teaneck")
 
 # Logo hosted on GitHub — update YOUR_GITHUB_USERNAME below
-GITHUB_USER   = os.environ.get("GH_USERNAME", "YOUR_GITHUB_USERNAME")
+GITHUB_USER   = os.environ.get("GITHUB_USERNAME", "YOUR_GITHUB_USERNAME")
 LOGO_URL      = f"https://raw.githubusercontent.com/{GITHUB_USER}/radius-morning-briefing/main/logo.jpg"
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -73,18 +73,22 @@ def render_email(data: dict, ai: dict) -> str:
 
         att_rows += f"""
         <tr>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;font-size:13px;color:#555;white-space:nowrap;">
+          <td style="padding:8px 8px 2px;font-size:13px;color:#555;white-space:nowrap;">
             {b['label']}{peak_tag}
           </td>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;width:120px;">
+          <td style="padding:8px 8px 2px;width:120px;">
             <div style="background:#f0f0f0;border-radius:3px;height:12px;overflow:hidden;">
               <div style="background:#c8271e;opacity:{bar_opacity};height:100%;width:{pct}%;border-radius:3px;"></div>
             </div>
           </td>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;font-size:13px;font-weight:700;text-align:center;">{b['count']}</td>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;font-size:13px;font-weight:700;text-align:center;">{b.get('instructors', '—')}</td>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;font-size:13px;font-weight:700;text-align:center;color:{ratio_color};">{ratio_str}</td>
-          <td style="padding:8px;border-bottom:1px solid #f5f5f5;font-size:11px;color:#888;">{', '.join(b['students'])}</td>
+          <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;">{b['count']}</td>
+          <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;">{b.get('instructors', '—')}</td>
+          <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;color:{ratio_color};">{ratio_str}</td>
+        </tr>
+        <tr>
+          <td colspan="5" style="padding:0 8px 8px 8px;font-size:11px;color:#999;border-bottom:1px solid #f5f5f5;">
+            {', '.join(b['students'])}
+          </td>
         </tr>"""
 
     # ── Mastery rows ───────────────────────────────────────────────────────────
@@ -219,7 +223,6 @@ def render_email(data: dict, ai: dict) -> str:
             <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.4px;">Students</th>
             <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.4px;">Instructors</th>
             <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.4px;">Ratio</th>
-            <th style="text-align:left;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.4px;">Students</th>
           </tr>
         </thead>
         <tbody>{att_rows}</tbody>
