@@ -1,94 +1,91 @@
 """
 scrape.py
-Logs into Radius, navigates to the daily session report, and downloads the CSV.
-
-IMPORTANT: Before this script will work, you need to inspect your Radius site
-and fill in the SELECTORS section below. Instructions are in README.md.
+Logs into Radius, selects the center, runs the DWP report, and downloads the Excel file.
+All selectors are confirmed from inspection of radius.mathnasium.com.
 """
 
 import os
-import time
 from datetime import date
 from playwright.sync_api import sync_playwright
 
 # ─── CONFIGURATION ────────────────────────────────────────────────────────────
-RADIUS_URL      = os.environ["RADIUS_URL"]        # e.g. https://app.radiusapp.com
-RADIUS_USERNAME = os.environ["RADIUS_USERNAME"]
-RADIUS_PASSWORD = os.environ["RADIUS_PASSWORD"]
-DOWNLOAD_DIR    = os.path.join(os.path.dirname(__file__), "downloads")
+RADIUS_LOGIN_URL  = "https://radius.mathnasium.com"
+RADIUS_REPORT_URL = "https://radius.mathnasium.com/DigitalWorkoutPlan/Report"
+RADIUS_USERNAME   = os.environ["RADIUS_USERNAME"]
+RADIUS_PASSWORD   = os.environ["RADIUS_PASSWORD"]
+DOWNLOAD_DIR      = os.path.join(os.path.dirname(__file__), "downloads")
 
-# ─── SELECTORS ────────────────────────────────────────────────────────────────
-# These need to be filled in once you've inspected your Radius login page.
-# Open Radius in Chrome, right-click each field, click "Inspect", and find
-# the id or name attribute. Replace the placeholders below.
-#
-# Example: if the username field is <input id="user-email">, use "#user-email"
-
-LOGIN_USERNAME_SELECTOR = "#username"       # ← update if different
-LOGIN_PASSWORD_SELECTOR = "#password"       # ← update if different
-LOGIN_BUTTON_SELECTOR   = "#login-button"   # ← update if different
-
-# The URL of the daily session report page inside Radius
-REPORT_URL = os.environ.get("RADIUS_REPORT_URL", "")  # e.g. https://app.radiusapp.com/reports/sessions
-
-# The selector for the CSV/Excel export button on the report page
-EXPORT_BUTTON_SELECTOR  = "#export-csv"     # ← update after inspecting Radius
+# Center values from the AllCenterListMultiSelect dropdown
+CENTER_VALUES = {
+    "Teaneck":   "2871",
+    "Englewood": "2428",
+}
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def scrape_radius_report(target_date: date = None) -> str:
+def scrape_radius_report(center_name: str, target_date: date = None) -> str:
     """
-    Logs into Radius, runs the daily session report for target_date,
-    downloads the CSV, and returns the local file path.
+    Logs into Radius, selects the given center, runs the DWP report for
+    target_date, downloads the Excel file, and returns the local file path.
     """
     if target_date is None:
         target_date = date.today()
 
+    if center_name not in CENTER_VALUES:
+        raise ValueError(f"Unknown center: {center_name}. Must be one of {list(CENTER_VALUES.keys())}")
+
+    center_value = CENTER_VALUES[center_name]
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    date_str = target_date.strftime("%m/%d/%Y")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(accept_downloads=True)
-        page = context.new_page()
+        page    = context.new_page()
 
         # ── Step 1: Log in ────────────────────────────────────────────────────
-        print(f"[scrape] Navigating to {RADIUS_URL} ...")
-        page.goto(RADIUS_URL)
+        print(f"[scrape] Logging into Radius ...")
+        page.goto(RADIUS_LOGIN_URL)
         page.wait_for_load_state("networkidle")
 
-        print("[scrape] Logging in ...")
-        page.fill(LOGIN_USERNAME_SELECTOR, RADIUS_USERNAME)
-        page.fill(LOGIN_PASSWORD_SELECTOR, RADIUS_PASSWORD)
-        page.click(LOGIN_BUTTON_SELECTOR)
+        page.fill("#UserName", RADIUS_USERNAME)
+        page.fill("#Password", RADIUS_PASSWORD)
+        page.click("#login")
+        page.wait_for_load_state("networkidle")
+        print("[scrape] Logged in successfully.")
+
+        # ── Step 2: Navigate to report page ───────────────────────────────────
+        print(f"[scrape] Navigating to DWP report ...")
+        page.goto(RADIUS_REPORT_URL)
         page.wait_for_load_state("networkidle")
 
-        # ── Step 2: Navigate to report ────────────────────────────────────────
-        print(f"[scrape] Navigating to report page ...")
-        page.goto(REPORT_URL)
+        # ── Step 3: Select center from Kendo multiselect ──────────────────────
+        # The underlying <select> is hidden by Kendo UI, so we set its value
+        # directly via JavaScript and trigger the change event so Kendo
+        # registers the selection.
+        print(f"[scrape] Selecting center: {center_name} ...")
+        page.evaluate(f"""
+            var widget = jQuery('#AllCenterListMultiSelect').data('kendoMultiSelect');
+            widget.value(['{center_value}']);
+            widget.trigger('change');
+        """)
+        page.wait_for_timeout(1000)
+
+        # ── Step 4: Click Search ──────────────────────────────────────────────
+        print("[scrape] Running search ...")
+        page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2000)
 
-        # ── Step 3: Set date filter to today ──────────────────────────────────
-        # Adjust this block once you know what the date filter looks like in Radius.
-        # Common patterns:
-        #   page.fill("#date-from", date_str)
-        #   page.fill("#date-to", date_str)
-        #   page.select_option("#date-range", "today")
-        print(f"[scrape] Setting date filter to {date_str} ...")
-        # TODO: add your date filter interaction here
-
-        # ── Step 4: Run report & wait for results ─────────────────────────────
-        # page.click("#run-report")
-        # page.wait_for_selector(".report-results-table")
-        # TODO: update selectors for your report run button and results
-
-        # ── Step 5: Download CSV ──────────────────────────────────────────────
-        print("[scrape] Downloading CSV ...")
+        # ── Step 5: Download Excel export ─────────────────────────────────────
+        print("[scrape] Downloading Excel export ...")
         with page.expect_download() as download_info:
-            page.click(EXPORT_BUTTON_SELECTOR)
+            page.click("#dwpExcelBtn")
         download = download_info.value
 
-        file_path = os.path.join(DOWNLOAD_DIR, f"radius_{target_date.isoformat()}.csv")
+        file_path = os.path.join(
+            DOWNLOAD_DIR,
+            f"radius_{center_name.lower()}_{target_date.isoformat()}.xlsx"
+        )
         download.save_as(file_path)
         print(f"[scrape] Saved to {file_path}")
 
@@ -98,5 +95,7 @@ def scrape_radius_report(target_date: date = None) -> str:
 
 
 if __name__ == "__main__":
-    path = scrape_radius_report()
+    import sys
+    center = sys.argv[1] if len(sys.argv) > 1 else "Teaneck"
+    path   = scrape_radius_report(center)
     print(f"Downloaded: {path}")
