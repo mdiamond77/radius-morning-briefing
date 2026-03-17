@@ -1,4 +1,4 @@
-name: Nightly Morning Briefing
+name: Nightly Daily Summary
 
 on:
   schedule:
@@ -38,14 +38,6 @@ jobs:
           GH_USERNAME:       ${{ secrets.GH_USERNAME }}
         run: python main.py --center Teaneck
 
-      - name: Upload Teaneck CSV
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: teaneck-csv-${{ github.run_id }}
-          path: downloads/
-          retention-days: 7
-
   englewood-briefing:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -77,11 +69,3 @@ jobs:
           CENTER_NAME:       ${{ secrets.ENGLEWOOD_CENTER_NAME }}
           GH_USERNAME:       ${{ secrets.GH_USERNAME }}
         run: python main.py --center Englewood
-
-      - name: Upload Englewood CSV
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: englewood-csv-${{ github.run_id }}
-          path: downloads/
-          retention-days: 7
