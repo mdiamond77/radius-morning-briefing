@@ -51,6 +51,7 @@ def parse_lp(lp_str: str) -> tuple[list[str], list[str]]:
 
 
 def half_hour_buckets(sessions: list[dict]) -> list[dict]:
+    """Build half-hour buckets with student count, instructor count, and ratio."""
     all_starts = [s["start_min"] for s in sessions if s["start_min"]]
     all_ends   = [s["end_min"]   for s in sessions if s["end_min"]]
     if not all_starts:
@@ -62,18 +63,29 @@ def half_hour_buckets(sessions: list[dict]) -> list[dict]:
     buckets = []
     for bucket_start in range(earliest, latest, 30):
         bucket_end = bucket_start + 30
-        students_in_bucket = [
-            s["name"] for s in sessions
-            if s["start_min"] and s["end_min"]
-            and s["start_min"] < bucket_end
-            and s["end_min"] > bucket_start
-        ]
-        if students_in_bucket:
+
+        students_in    = set()
+        instructors_in = set()
+
+        for s in sessions:
+            if s["start_min"] and s["end_min"] \
+               and s["start_min"] < bucket_end \
+               and s["end_min"] > bucket_start:
+                students_in.add(s["name"])
+                for inst in [i.strip() for i in s["instructor"].split(",") if i.strip()]:
+                    instructors_in.add(inst)
+
+        if students_in:
+            sc = len(students_in)
+            ic = len(instructors_in)
+            ratio = round(sc / ic, 1) if ic else None
             buckets.append({
-                "label":    f"{fmt_time(bucket_start)} \u2013 {fmt_time(bucket_end)}",
-                "count":    len(students_in_bucket),
-                "students": students_in_bucket,
-                "peak":     False,
+                "label":       f"{fmt_time(bucket_start)} \u2013 {fmt_time(bucket_end)}",
+                "count":       sc,
+                "instructors": ic,
+                "ratio":       ratio,
+                "students":    sorted(students_in),
+                "peak":        False,
             })
 
     if buckets:
@@ -190,3 +202,10 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
         "below_goal":         [f"{s['name']} ({s['pages']}/{s['goal']} pages)" for s in sessions if not s["beat_goal"] and s["goal"] > 0],
         "sessions":           sessions,
     }
+
+
+if __name__ == "__main__":
+    import sys, json
+    path = sys.argv[1] if len(sys.argv) > 1 else "downloads/radius_today.xlsx"
+    data = parse_report(path)
+    print(json.dumps(data, indent=2, default=str))
