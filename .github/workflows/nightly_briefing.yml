@@ -2,7 +2,7 @@ name: Nightly Daily Summary
 
 on:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 jobs:
@@ -12,30 +12,26 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Install Playwright browser
         run: playwright install chromium --with-deps
-
       - name: Run Teaneck Daily Summary
         env:
-          RADIUS_URL:        ${{ secrets.RADIUS_URL }}
-          RADIUS_USERNAME:   ${{ secrets.RADIUS_USERNAME }}
-          RADIUS_PASSWORD:   ${{ secrets.RADIUS_PASSWORD }}
+          RADIUS_URL: ${{ secrets.RADIUS_URL }}
+          RADIUS_USERNAME: ${{ secrets.RADIUS_USERNAME }}
+          RADIUS_PASSWORD: ${{ secrets.RADIUS_PASSWORD }}
           RADIUS_REPORT_URL: ${{ secrets.RADIUS_REPORT_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SMTP_USER:         ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:     ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REPORT_RECIPIENTS: ${{ secrets.REPORT_RECIPIENTS }}
-          CENTER_NAME:       ${{ secrets.CENTER_NAME }}
-          GH_USERNAME:       ${{ secrets.GH_USERNAME }}
+          CENTER_NAME: ${{ secrets.CENTER_NAME }}
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
         run: python main.py --center Teaneck
 
   englewood-briefing:
@@ -44,28 +40,24 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Install Playwright browser
         run: playwright install chromium --with-deps
-
       - name: Run Englewood Daily Summary
         env:
-          RADIUS_URL:        ${{ secrets.RADIUS_URL }}
-          RADIUS_USERNAME:   ${{ secrets.RADIUS_USERNAME }}
-          RADIUS_PASSWORD:   ${{ secrets.RADIUS_PASSWORD }}
+          RADIUS_URL: ${{ secrets.RADIUS_URL }}
+          RADIUS_USERNAME: ${{ secrets.RADIUS_USERNAME }}
+          RADIUS_PASSWORD: ${{ secrets.RADIUS_PASSWORD }}
           RADIUS_REPORT_URL: ${{ secrets.RADIUS_REPORT_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SMTP_USER:         ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:     ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REPORT_RECIPIENTS: ${{ secrets.ENGLEWOOD_RECIPIENTS }}
-          CENTER_NAME:       ${{ secrets.ENGLEWOOD_CENTER_NAME }}
-          GH_USERNAME:       ${{ secrets.GH_USERNAME }}
+          CENTER_NAME: ${{ secrets.ENGLEWOOD_CENTER_NAME }}
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
         run: python main.py --center Englewood
