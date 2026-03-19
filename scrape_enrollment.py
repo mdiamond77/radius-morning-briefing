@@ -73,11 +73,11 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         print("[enroll-scrape] Running search ...")
         page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(5000)  # give results extra time to fully render
 
         # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[enroll-scrape] Downloading Excel export ...")
-        with page.expect_download() as download_info:
+        with page.expect_download(timeout=120000) as download_info:
             page.click("#btnExport")
         download = download_info.value
 
