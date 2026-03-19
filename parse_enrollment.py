@@ -63,15 +63,18 @@ def parse_enrollment_report(xlsx_path: str, center: str, report_date: date = Non
 
     # ── Filter dummy/test accounts ─────────────────────────────────────────────
     def is_dummy(r):
-        account = (r.get("Account Name") or "").lower()
-        first   = (r.get("Student First Name") or "").lower()
-        last    = (r.get("Student Last Name") or "").lower()
+        account   = (r.get("Account Name") or "").lower()
+        first     = (r.get("Student First Name") or "").lower()
+        last      = (r.get("Student Last Name") or "").lower()
         guardians = (r.get("Guardians") or "").lower()
+        emails    = (r.get("Guardian Emails") or "").lower()
         if "test" in first or "test" in last:
             return True
         if "matt diamond" in account or "matt diamond" in guardians:
             return True
         if "sample" in account or "sample" in first or "sample" in last:
+            return True
+        if "@mathnasium.com" in emails:
             return True
         return False
 
@@ -158,14 +161,20 @@ def parse_enrollment_report(xlsx_path: str, center: str, report_date: date = Non
         if start:
             student_key_rows[key].append({
                 "start":  start,
-                "status": (r.get("Status") or "").strip()
+                "status": (r.get("Status") or "").strip(),
+                "type":   (r.get("Membership Type") or "").strip(),
             })
 
     enrolled_count = 0
     on_hold_count  = 0
     for key, records in student_key_rows.items():
         records.sort(key=lambda x: x["start"], reverse=True)
-        latest_status = records[0]["status"]
+        latest = records[0]
+        latest_status = latest["status"]
+        latest_type   = latest.get("type", "").lower()
+        # Exclude private memberships from roster count
+        if "private" in latest_type:
+            continue
         if latest_status == "Enrolled":
             enrolled_count += 1
         elif latest_status == "On Hold":
