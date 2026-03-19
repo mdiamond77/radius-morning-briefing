@@ -18,8 +18,8 @@ RECIPIENTS    = os.environ["REPORT_RECIPIENTS"]
 CENTER_NAME   = os.environ.get("CENTER_NAME", "Teaneck")
 
 # Logo embedded as base64 so it always displays in Gmail
-LOGO_B64 = "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"
-LOGO_URL = f"data:image/jpeg;base64,{LOGO_B64}"
+GITHUB_USER = os.environ.get("GH_USERNAME", "YOUR_GITHUB_USERNAME")
+LOGO_URL    = f"https://raw.githubusercontent.com/{GITHUB_USER}/radius-morning-briefing/main/logo.jpg"
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -331,6 +331,33 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
           </td>
         </tr>"""
 
+    # ── Below 3.0 Mathlete score ───────────────────────────────────────────────
+    below_mathlete = [
+        s for s in data["sessions"]
+        if s["score"] is not None and s["score"] < 3.0
+    ]
+    if below_mathlete:
+        below_rows = "".join(
+            f'<tr>'
+            f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{s["name"]}</td>'
+            f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">'
+            f'<span style="display:inline-block;background:#fef9c3;color:#713f12;border:1px solid #fde047;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600;">{s["score"]}/3</span>'
+            f'</td>'
+            f'</tr>'
+            for s in sorted(below_mathlete, key=lambda x: x["score"])
+        )
+        below_mathlete_html = f"""
+        {subh("Below 3.0 Mathlete score", color="#854F0B")}
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+          <thead><tr style="background:#fafafa;">
+            <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Student</th>
+            <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Score</th>
+          </tr></thead>
+          <tbody>{below_rows}</tbody>
+        </table>"""
+    else:
+        below_mathlete_html = ""
+
     # ── Mastery rows ───────────────────────────────────────────────────────────
     mastery_rows = ""
     for m in data["mastery_list"]:
@@ -371,9 +398,11 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
     # ── Instructor rows ────────────────────────────────────────────────────────
     instructor_rows = ""
     for i in data["instructor_summary"]:
+        cd = i.get("is_center_director", False)
+        name_html = f'{i["name"]} <span style="font-size:11px;font-weight:400;color:#888;font-style:italic;">(CD — excluded from ratios)</span>' if cd else i["name"]
         instructor_rows += f"""
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{i['name']}</td>
+        <tr style="{'opacity:0.7;' if cd else ''}">
+          <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{name_html}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">{i['count']}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#666;">{', '.join(i['students'])}</td>
         </tr>"""
@@ -411,21 +440,13 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
 <body style="margin:0;padding:0;background:#f4f4f0;font-family:Arial,sans-serif;">
 <div style="max-width:700px;margin:0 auto;background:#fff;">
 
-  <!-- RED HEADER -->
-  <div style="background:#c8271e;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;">
-    <img src="{LOGO_URL}" alt="Mathnasium" height="38" style="display:block;">
-    <div style="text-align:right;color:#fff;font-size:12px;opacity:0.9;line-height:1.5;">
-      Daily Summary Report<br><strong>{data['center']} Center</strong>
+  <!-- RED HEADER — single bar with logo, title, and date -->
+  <div style="background:#c8271e;padding:20px 28px 16px;display:flex;align-items:center;justify-content:space-between;">
+    <img src="{LOGO_URL}" alt="Mathnasium" height="52" style="display:block;filter:brightness(0) invert(1);">
+    <div style="text-align:right;color:#fff;">
+      <div style="font-size:20px;font-weight:500;line-height:1.2;">Daily Summary Report &mdash; {data['center']}</div>
+      <div style="font-size:12px;opacity:0.85;margin-top:4px;">{data['report_date']}</div>
     </div>
-  </div>
-
-  <!-- TITLE -->
-  <div style="background:#fff;border-bottom:1px solid #e8e8e8;padding:20px 28px 16px;">
-    <div style="font-size:22px;font-weight:700;color:#1a1a1a;">Daily Summary</div>
-    <div style="margin-top:6px;">
-      <span style="display:inline-block;font-size:12px;font-weight:600;background:#fef2f2;color:#c8271e;border:1px solid #fcc;border-radius:4px;padding:2px 8px;">{data['center']}</span>
-    </div>
-    <div style="font-size:13px;color:#666;margin-top:6px;">{data['report_date']}</div>
   </div>
 
   <div style="padding:24px 28px;">
@@ -477,6 +498,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
           {stat_box("&#11088; Avg Mathlete Score", f"{data['avg_score']}/3" if data['avg_score'] else "N/A")}
         </tr>
       </table>
+      {below_mathlete_html}
       {subh("Mastery achievements")}
       <table width="100%" cellpadding="0" cellspacing="0">
         <thead>

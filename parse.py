@@ -50,8 +50,13 @@ def parse_lp(lp_str: str) -> tuple[list[str], list[str]]:
     return mastered, worked
 
 
-def half_hour_buckets(sessions: list[dict]) -> list[dict]:
-    """Build half-hour buckets with student count, instructor count, and ratio."""
+def half_hour_buckets(sessions: list[dict], center: str = "") -> list[dict]:
+    """Build half-hour buckets with student count, instructor count, and ratio.
+    Center directors are excluded from instructor counts."""
+
+    # Center directors — excluded from ratio calculations
+    CENTER_DIRECTORS = {"elizabeth anacleto", "samba taha"}
+
     all_starts = [s["start_min"] for s in sessions if s["start_min"]]
     all_ends   = [s["end_min"]   for s in sessions if s["end_min"]]
     if not all_starts:
@@ -73,7 +78,8 @@ def half_hour_buckets(sessions: list[dict]) -> list[dict]:
                and s["end_min"] > bucket_start:
                 students_in.add(s["name"])
                 for inst in [i.strip() for i in s["instructor"].split(",") if i.strip()]:
-                    instructors_in.add(inst)
+                    if inst.lower() not in CENTER_DIRECTORS:
+                        instructors_in.add(inst)
 
         if students_in:
             sc = len(students_in)
@@ -162,6 +168,8 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
     mastery_list  = [{"name": s["name"], "topics": s["mastered"]} for s in sessions if s["mastered"]]
     total_mastery = sum(len(m["topics"]) for m in mastery_list)
 
+    CENTER_DIRECTORS = {"elizabeth anacleto", "samba taha"}
+
     instructor_map = defaultdict(list)
     team_taught    = set()
     for s in sessions:
@@ -179,10 +187,11 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
         if solo:   parts.append(f"{len(solo)} solo")
         if teamed: parts.append(f"{len(teamed)} team-taught")
         instructor_summary.append({
-            "name":     inst,
-            "count":    len(students),
-            "students": students,
-            "detail":   ", ".join(parts),
+            "name":               inst,
+            "count":              len(students),
+            "students":           students,
+            "detail":             ", ".join(parts),
+            "is_center_director": inst.lower() in CENTER_DIRECTORS,
         })
 
     return {

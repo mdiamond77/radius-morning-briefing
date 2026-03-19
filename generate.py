@@ -17,26 +17,30 @@ MODEL  = "claude-haiku-4-5-20251001"   # fast & cost-effective for nightly repor
 # ─── EXECUTIVE SUMMARY ────────────────────────────────────────────────────────
 
 def generate_executive_summary(data: dict) -> str:
-    mastery_names = ", ".join(m["name"] for m in data["mastery_list"]) or "none"
-    beat          = ", ".join(data["beat_goal"]) or "none"
-    below         = ", ".join(data["below_goal"]) or "none"
-    instructors   = ", ".join(
-        f"{i['name']} ({i['count']} students)" for i in data["instructor_summary"]
+    beat       = ", ".join(data["beat_goal"]) or "none"
+    below      = ", ".join(data["below_goal"]) or "none"
+    instructors = ", ".join(
+        f"{i['name']} ({i['count']} students)"
+        for i in data["instructor_summary"]
+        if not i.get("is_center_director")
     )
-    flags = len(data["internal_notes"])
+    flags      = len(data["internal_notes"])
     missing_lp = len(data["missing_lp"])
+    below_30   = [s for s in data["sessions"] if s["score"] is not None and s["score"] < 3.0]
+    below_30_str = ", ".join(f"{s['name']} ({s['score']}/3)" for s in below_30) or "none"
 
     prompt = f"""Write a 3-4 sentence executive summary paragraph for the {data['center']} Mathnasium \
 center director. This will appear at the top of the nightly briefing email.
 
-Be specific — name students when relevant. Cover the most important points: mastery achievements, \
-standout performers, attendance highlights, instructor workload, and any flags or concerns. \
+Be specific — name students when relevant. Cover the most important points: standout performers, \
+attendance highlights, instructor workload, Mathlete score trends, and any flags or concerns. \
+Do NOT mention mastery checks — those are covered separately in the Academic Accomplishments section. \
 Be direct and professional. Write only the paragraph — no greeting, subject line, or sign-off.
 
 Data from {data['report_date']}:
 - Sessions: {data['total_sessions']}, Unique students: {data['unique_students']}
 - Total pages completed: {data['total_pages']}, Avg Mathlete score: {data['avg_score']}/3
-- Mastery checks ({data['total_mastery']}): {mastery_names}
+- Students below 3.0 Mathlete: {below_30_str}
 - Beat page goal: {beat}
 - Below page goal: {below}
 - Instructors: {instructors}
