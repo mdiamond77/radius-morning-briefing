@@ -74,19 +74,23 @@ def scrape_radius_report(center_name: str, target_date: date = None) -> str:
         # ── Step 4: Set date filter to target_date ────────────────────────────
         print(f"[scrape] Setting date filter to {date_str} ...")
         try:
+            js_date = target_date.strftime("%B %-d, %Y")
             page.evaluate(f"""
-                var startPicker = jQuery('#StartDate').data('kendoDatePicker');
-                var endPicker   = jQuery('#EndDate').data('kendoDatePicker');
+                var startPicker = jQuery('#dwpFromDate').data('kendoDatePicker');
+                var endPicker   = jQuery('#dwpToDate').data('kendoDatePicker');
                 if (startPicker) {{
-                    startPicker.value(new Date('{target_date.strftime("%B %-d, %Y")}'));
+                    startPicker.value(new Date('{js_date}'));
                     startPicker.trigger('change');
                 }}
                 if (endPicker) {{
-                    endPicker.value(new Date('{target_date.strftime("%B %-d, %Y")}'));
+                    endPicker.value(new Date('{js_date}'));
                     endPicker.trigger('change');
                 }}
             """)
             page.wait_for_timeout(500)
+            # Verify the date was set
+            actual = page.input_value("#dwpFromDate")
+            print(f"[scrape] Date field now shows: {actual}")
         except Exception as e:
             print(f"[scrape] Warning: could not set date filter — {e}")
 
