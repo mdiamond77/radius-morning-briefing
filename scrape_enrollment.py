@@ -90,63 +90,72 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[enroll-scrape] Downloading Excel export ...")
 
-        # Log ALL responses after the button click to see what the server returns
+        # Inspect the button's onclick and any Kendo widget attached to it
+        btn_info = page.evaluate("""() => {
+            var btn = document.getElementById('btnExport');
+            if (!btn) return {error: 'button not found'};
+            var widget = jQuery(btn).data('kendoButton');
+            return {
+                disabled: btn.disabled,
+                hasAttribute: btn.hasAttribute('disabled'),
+                onclick: btn.getAttribute('onclick'),
+                outerHTML: btn.outerHTML.substring(0, 300),
+                hasKendo: !!widget,
+                parentForm: btn.closest('form') ? btn.closest('form').action : 'no form',
+            };
+        }""")
+        print(f"[enroll-scrape] Button info: {btn_info}")
+
+        # Take a screenshot to see page state
+        screenshot_path = os.path.join(DOWNLOAD_DIR, "enrollment_page.png")
+        page.screenshot(path=screenshot_path)
+        print(f"[enroll-scrape] Screenshot saved to {screenshot_path}")
+
+        # Set up response listener BEFORE clicking
         all_responses = []
+        file_saved = {"path": None}
 
         def handle_response(response):
             ct = response.headers.get("content-type", "")
-            cl = response.headers.get("content-length", "?")
-            all_responses.append({
-                "url": response.url,
-                "status": response.status,
-                "content_type": ct,
-                "content_length": cl,
-            })
-            if "excel" in ct or "spreadsheet" in ct or "octet" in ct or "download" in ct:
+            all_responses.append(f"[{response.status}] {ct[:60]} | {response.url[-100:]}")
+            if any(x in ct for x in ["excel", "spreadsheet", "octet", "download", "zip"]):
                 try:
                     body = response.body()
-                    print(f"[enroll-scrape] FILE RESPONSE: {response.url} | {ct} | {len(body)} bytes")
-                    file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
-                    with open(file_path, "wb") as f:
+                    fp = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+                    with open(fp, "wb") as f:
                         f.write(body)
-                    print(f"[enroll-scrape] Saved to {file_path}")
+                    file_saved["path"] = fp
+                    print(f"[enroll-scrape] FILE SAVED via interception: {len(body)} bytes")
                 except Exception as e:
-                    print(f"[enroll-scrape] Could not save: {e}")
+                    print(f"[enroll-scrape] Could not save intercepted file: {e}")
 
         page.on("response", handle_response)
 
         # Try standard download
         try:
-            with page.expect_download(timeout=30000) as download_info:
+            with page.expect_download(timeout=30000) as dl:
                 page.click("#btnExport")
-            download = download_info.value
-            file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
-            download.save_as(file_path)
-            print(f"[enroll-scrape] Saved via download event to {file_path}")
+            fp = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+            dl.value.save_as(fp)
+            print(f"[enroll-scrape] Saved via download event: {fp}")
             browser.close()
-            return file_path
+            return fp
         except Exception as e1:
-            print(f"[enroll-scrape] Standard download failed: {e1}")
+            print(f"[enroll-scrape] Download event failed: {e1}")
 
-        # Wait for any intercepted file response
+        # Wait and check if interception caught anything
         page.wait_for_timeout(10000)
-
-        # Check if we caught a file via response interception
-        saved = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
-        if os.path.exists(saved):
-            print(f"[enroll-scrape] File was saved via response interception.")
+        if file_saved["path"]:
             browser.close()
-            return saved
+            return file_saved["path"]
 
-        # Log everything we saw
-        print(f"[enroll-scrape] All responses after button click ({len(all_responses)} total):")
-        for r in all_responses[-20:]:  # last 20
-            print(f"  [{r['status']}] {r['content_type'][:50] if r['content_type'] else 'no-ct'} | {r['url'][-80:]}")
+        # Log all responses we saw
+        print(f"[enroll-scrape] Responses after click ({len(all_responses)}):")
+        for r in all_responses[-30:]:
+            print(f"  {r}")
 
-        current_url = page.url
-        print(f"[enroll-scrape] Current URL: {current_url}")
         browser.close()
-        raise RuntimeError("Could not download enrollment report — see logs above for details.")
+        raise RuntimeError("Could not download enrollment report — see logs above.")
 
         browser.close()
         raise RuntimeError(
