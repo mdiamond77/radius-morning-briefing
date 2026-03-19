@@ -14,7 +14,7 @@ Use local file: python main.py --xlsx path/to/dwp.xlsx --enrollment path/to/enro
 
 import argparse
 import os
-from datetime import date
+from datetime import date, timedelta
 
 from parse            import parse_report
 from parse_enrollment import parse_enrollment_report
@@ -26,7 +26,10 @@ def run(center_name: str = None, xlsx_path: str = None,
         enrollment_path: str = None, report_date: date = None):
 
     if report_date is None:
-        report_date = date.today()
+        # GitHub Actions runs in UTC. At 11 PM Eastern (3 AM UTC),
+        # the server date is already the next calendar day.
+        # So we always report on yesterday (UTC) = today (Eastern).
+        report_date = date.today() - timedelta(days=1)
     if center_name is None:
         center_name = os.environ.get("CENTER_NAME", "Teaneck")
 
