@@ -33,6 +33,13 @@ jobs:
           CENTER_NAME: ${{ secrets.CENTER_NAME }}
           GH_USERNAME: ${{ secrets.GH_USERNAME }}
         run: python main.py --center Teaneck
+      - name: Upload debug screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshot-${{ github.run_id }}
+          path: downloads/enrollment_page.png
+          retention-days: 3
 
   englewood-briefing:
     runs-on: ubuntu-latest
