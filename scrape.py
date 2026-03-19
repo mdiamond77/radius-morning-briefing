@@ -35,6 +35,7 @@ def scrape_radius_report(center_name: str, target_date: date = None) -> str:
         raise ValueError(f"Unknown center: {center_name}. Must be one of {list(CENTER_VALUES.keys())}")
 
     center_value = CENTER_VALUES[center_name]
+    date_str     = target_date.strftime("%m/%d/%Y")
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     with sync_playwright() as p:
@@ -70,13 +71,32 @@ def scrape_radius_report(center_name: str, target_date: date = None) -> str:
         """)
         page.wait_for_timeout(1000)
 
-        # ── Step 4: Click Search ──────────────────────────────────────────────
+        # ── Step 4: Set date filter to target_date ────────────────────────────
+        print(f"[scrape] Setting date filter to {date_str} ...")
+        try:
+            page.evaluate(f"""
+                var startPicker = jQuery('#StartDate').data('kendoDatePicker');
+                var endPicker   = jQuery('#EndDate').data('kendoDatePicker');
+                if (startPicker) {{
+                    startPicker.value(new Date('{target_date.strftime("%B %-d, %Y")}'));
+                    startPicker.trigger('change');
+                }}
+                if (endPicker) {{
+                    endPicker.value(new Date('{target_date.strftime("%B %-d, %Y")}'));
+                    endPicker.trigger('change');
+                }}
+            """)
+            page.wait_for_timeout(500)
+        except Exception as e:
+            print(f"[scrape] Warning: could not set date filter — {e}")
+
+        # ── Step 5: Click Search ──────────────────────────────────────────────
         print("[scrape] Running search ...")
         page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(2000)
 
-        # ── Step 5: Download Excel export ─────────────────────────────────────
+        # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[scrape] Downloading Excel export ...")
         with page.expect_download() as download_info:
             page.click("#dwpExcelBtn")

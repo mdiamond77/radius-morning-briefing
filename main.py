@@ -50,6 +50,11 @@ def run(center_name: str = None, xlsx_path: str = None,
     print("=== Step 3: Parsing reports ===")
     data            = parse_report(xlsx_path, report_date)
     enrollment_data = parse_enrollment_report(enrollment_path, center_name, report_date)
+
+    if not data or not data.get("total_sessions"):
+        print(f"    No sessions found for {center_name} on {report_date} — skipping email.")
+        return
+
     print(f"    DWP: {data['total_sessions']} sessions, {data['unique_students']} students")
     print(f"    Enrollment: {len(enrollment_data['this_month'])} new this month, roster {enrollment_data['active_roster']}")
 
