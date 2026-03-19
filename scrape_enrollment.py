@@ -73,46 +73,65 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         print("[enroll-scrape] Running search ...")
         page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(8000)  # wait for results to fully render
+        page.wait_for_timeout(8000)
 
-        # Debug: check if export button exists and is visible
-        export_visible = page.is_visible("#btnExport")
-        export_enabled = page.is_enabled("#btnExport")
-        print(f"[enroll-scrape] Export button visible: {export_visible}, enabled: {export_enabled}")
-
-        # Also check for any result count to confirm search worked
-        try:
-            result_text = page.inner_text("body")
-            # Look for any indication of row count
-            import re
-            counts = re.findall(r'\d+ (records?|results?|rows?|students?)', result_text, re.IGNORECASE)
-            if counts:
-                print(f"[enroll-scrape] Results found: {counts[:3]}")
-        except Exception:
-            pass
+        print(f"[enroll-scrape] Export button visible: {page.is_visible('#btnExport')}, enabled: {page.is_enabled('#btnExport')}")
 
         # ── Step 6: Download Excel export ─────────────────────────────────────
+        # The enrollment export uses an AJAX request rather than a direct
+        # browser download, so we intercept the response instead.
         print("[enroll-scrape] Downloading Excel export ...")
+
+        # Try standard download first
         try:
-            with page.expect_download(timeout=120000) as download_info:
-                # Try regular click first
+            with page.expect_download(timeout=30000) as download_info:
                 page.click("#btnExport")
             download = download_info.value
-        except Exception as e1:
-            print(f"[enroll-scrape] Regular click failed: {e1}")
-            print("[enroll-scrape] Trying JavaScript click ...")
-            with page.expect_download(timeout=120000) as download_info:
-                page.evaluate("document.getElementById('btnExport').click()")
-            download = download_info.value
+            file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+            download.save_as(file_path)
+            print(f"[enroll-scrape] Saved to {file_path}")
+            browser.close()
+            return file_path
+        except Exception:
+            print("[enroll-scrape] Standard download failed, trying response interception ...")
 
-        file_path = os.path.join(
-            DOWNLOAD_DIR,
-            f"enrollment_{target_date.isoformat()}.xlsx"
-        )
-        download.save_as(file_path)
-        print(f"[enroll-scrape] Saved to {file_path}")
+        # Intercept the export response directly
+        import base64
+        export_data = {"content": None, "content_type": None}
+
+        def handle_response(response):
+            ct = response.headers.get("content-type", "")
+            if "excel" in ct or "spreadsheet" in ct or "octet" in ct:
+                try:
+                    export_data["content"] = response.body()
+                    export_data["content_type"] = ct
+                    print(f"[enroll-scrape] Intercepted response: {ct}, size: {len(export_data['content'])} bytes")
+                except Exception as e:
+                    print(f"[enroll-scrape] Could not read response body: {e}")
+
+        page.on("response", handle_response)
+        page.click("#btnExport")
+        page.wait_for_timeout(15000)
+
+        if export_data["content"]:
+            file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+            with open(file_path, "wb") as f:
+                f.write(export_data["content"])
+            print(f"[enroll-scrape] Saved intercepted file to {file_path}")
+            browser.close()
+            return file_path
+
+        # Last resort: check if a navigation to a file URL occurred
+        print("[enroll-scrape] Trying navigation-based export ...")
+        page.wait_for_timeout(5000)
+        current_url = page.url
+        print(f"[enroll-scrape] Current URL after export click: {current_url}")
 
         browser.close()
+        raise RuntimeError(
+            "Could not download enrollment report — button clicked but no file received. "
+            f"Page URL after click: {current_url}"
+        )
 
     return file_path
 
