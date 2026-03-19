@@ -49,8 +49,6 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         page.wait_for_load_state("networkidle")
 
         # ── Step 3: Set date range ────────────────────────────────────────────
-        # NOTE: Inspect the date fields on the enrollment report page and
-        # update these selectors if they differ from the DWP report.
         print(f"[enroll-scrape] Setting date range {start_str} to {end_str} ...")
         try:
             page.fill("#StartDate", start_str)
@@ -58,16 +56,29 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         except Exception as e:
             print(f"[enroll-scrape] Warning: could not set dates — {e}")
 
-        # ── Step 4: Click Search ──────────────────────────────────────────────
+        # ── Step 4: Select both centers ───────────────────────────────────────
+        # Download all centers in one file — we filter by center in code
+        print("[enroll-scrape] Selecting all centers ...")
+        try:
+            page.evaluate("""
+                var widget = jQuery('#AllCenterListMultiSelect').data('kendoMultiSelect');
+                widget.value(['2871', '2428']);
+                widget.trigger('change');
+            """)
+            page.wait_for_timeout(1000)
+        except Exception as e:
+            print(f"[enroll-scrape] Warning: could not set centers — {e}")
+
+        # ── Step 5: Click Search ──────────────────────────────────────────────
         print("[enroll-scrape] Running search ...")
         page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(3000)
 
-        # ── Step 5: Download Excel export ─────────────────────────────────────
+        # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[enroll-scrape] Downloading Excel export ...")
         with page.expect_download() as download_info:
-            page.click("#dwpExcelBtn")
+            page.click("#btnExport")
         download = download_info.value
 
         file_path = os.path.join(
