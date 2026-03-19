@@ -80,6 +80,6 @@ if __name__ == "__main__":
     parser.add_argument("--date",       help="Report date as YYYY-MM-DD (defaults to today)", default=None)
     args = parser.parse_args()
 
-    report_date = date.fromisoformat(args.date) if args.date else date.today()
+    report_date = date.fromisoformat(args.date) if args.date else date.today() - timedelta(days=1)
     run(center_name=args.center, xlsx_path=args.xlsx,
         enrollment_path=args.enrollment, report_date=report_date)
