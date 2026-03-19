@@ -73,13 +73,37 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         print("[enroll-scrape] Running search ...")
         page.click("#btnsearch")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(5000)  # give results extra time to fully render
+        page.wait_for_timeout(8000)  # wait for results to fully render
+
+        # Debug: check if export button exists and is visible
+        export_visible = page.is_visible("#btnExport")
+        export_enabled = page.is_enabled("#btnExport")
+        print(f"[enroll-scrape] Export button visible: {export_visible}, enabled: {export_enabled}")
+
+        # Also check for any result count to confirm search worked
+        try:
+            result_text = page.inner_text("body")
+            # Look for any indication of row count
+            import re
+            counts = re.findall(r'\d+ (records?|results?|rows?|students?)', result_text, re.IGNORECASE)
+            if counts:
+                print(f"[enroll-scrape] Results found: {counts[:3]}")
+        except Exception:
+            pass
 
         # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[enroll-scrape] Downloading Excel export ...")
-        with page.expect_download(timeout=120000) as download_info:
-            page.click("#btnExport")
-        download = download_info.value
+        try:
+            with page.expect_download(timeout=120000) as download_info:
+                # Try regular click first
+                page.click("#btnExport")
+            download = download_info.value
+        except Exception as e1:
+            print(f"[enroll-scrape] Regular click failed: {e1}")
+            print("[enroll-scrape] Trying JavaScript click ...")
+            with page.expect_download(timeout=120000) as download_info:
+                page.evaluate("document.getElementById('btnExport').click()")
+            download = download_info.value
 
         file_path = os.path.join(
             DOWNLOAD_DIR,
