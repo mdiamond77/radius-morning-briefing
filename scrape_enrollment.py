@@ -27,6 +27,9 @@ def scrape_enrollment_report(target_date: date = None) -> str:
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     end_str   = target_date.strftime("%m/%d/%Y")
     start_str = "01/01/2018"
+    # JavaScript Date constructor format
+    start_js  = "January 1, 2018"
+    end_js    = target_date.strftime("%B %-d, %Y")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -51,8 +54,15 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         # ── Step 3: Set date range ────────────────────────────────────────────
         print(f"[enroll-scrape] Setting date range {start_str} to {end_str} ...")
         try:
-            page.fill("#StartDate", start_str)
-            page.fill("#EndDate",   end_str)
+            page.evaluate(f"""
+                var startPicker = jQuery('#StartDate').data('kendoDatePicker');
+                var endPicker   = jQuery('#EndDate').data('kendoDatePicker');
+                startPicker.value(new Date('{start_js}'));
+                startPicker.trigger('change');
+                endPicker.value(new Date('{end_js}'));
+                endPicker.trigger('change');
+            """)
+            page.wait_for_timeout(500)
         except Exception as e:
             print(f"[enroll-scrape] Warning: could not set dates — {e}")
 
