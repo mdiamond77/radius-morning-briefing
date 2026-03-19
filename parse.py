@@ -104,9 +104,11 @@ def half_hour_buckets(sessions: list[dict], center: str = "") -> list[dict]:
     return buckets
 
 
-def parse_report(xlsx_path: str, report_date: date = None) -> dict:
+def parse_report(xlsx_path: str, report_date: date = None, private_students: set = None) -> dict:
     if report_date is None:
         report_date = date.today()
+    if private_students is None:
+        private_students = set()
 
     wb = load_workbook(xlsx_path)
     ws = wb.active
@@ -139,23 +141,26 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
             score = None
 
         sessions.append({
-            "name":           str(row.get("Student Name") or "").strip(),
-            "instructor":     str(row.get("Instructors") or "").strip(),
-            "start":          str(row.get("Session Start") or "").strip(),
-            "end":            str(row.get("Session End") or "").strip(),
-            "start_min":      start_min,
-            "end_min":        end_min,
-            "pages":          pages,
-            "goal":           goal,
-            "beat_goal":      pages > goal if goal else False,
-            "score":          score,
-            "mastered":       mastered,
-            "worked_on":      worked_on,
-            "session_notes":  str(row.get("Session Summary Notes") or "").strip(),
-            "internal_notes": str(row.get("Internal Notes") or "").strip(),
-            "lp_assigned":    bool(str(row.get("LP Assignment") or "").strip()),
-            "delivery":       str(row.get("Delivery Method") or "").strip(),
-            "center":         str(row.get("Center") or "").strip(),
+            "name":                   str(row.get("Student Name") or "").strip(),
+            "instructor":             str(row.get("Instructors") or "").strip(),
+            "start":                  str(row.get("Session Start") or "").strip(),
+            "end":                    str(row.get("Session End") or "").strip(),
+            "start_min":              start_min,
+            "end_min":                end_min,
+            "pages":                  pages,
+            "goal":                   goal,
+            "beat_goal":              pages > goal if goal else False,
+            "score":                  score,
+            "mastered":               mastered,
+            "worked_on":              worked_on,
+            "session_notes":          str(row.get("Session Summary Notes") or "").strip(),
+            "internal_notes":         str(row.get("Internal Notes") or "").strip(),
+            "schoolwork_description": str(row.get("Schoolwork Description") or "").strip(),
+            "membership_type":        str(row.get("Membership Type") or "").strip(),
+            "lp_assigned":            bool(str(row.get("LP Assignment") or "").strip()),
+            "assessment":             str(row.get("Assessment") or "").strip(),
+            "delivery":               str(row.get("Delivery Method") or "").strip(),
+            "center":                 str(row.get("Center") or "").strip(),
         })
 
     total_sessions  = len(sessions)
@@ -194,10 +199,57 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
             "is_center_director": inst.lower() in CENTER_DIRECTORS,
         })
 
+    # ── Assessment buckets ─────────────────────────────────────────────────────
+    def in_bucket(s, keyword):
+        a = s["assessment"].lower()
+        return keyword in a
+
+    assessments = {
+        "pre_in_progress":        sorted({s["name"] for s in sessions if in_bucket(s, "pre in progress")}),
+        "pre_completed":          sorted({s["name"] for s in sessions if in_bucket(s, "pre") and in_bucket(s, "completed") and not in_bucket(s, "progress check")}),
+        "post_in_progress":       sorted({s["name"] for s in sessions if in_bucket(s, "post in progress")}),
+        "post_completed":         sorted({s["name"] for s in sessions if in_bucket(s, "post") and in_bucket(s, "completed") and not in_bucket(s, "progress check")}),
+        "progress_in_progress":   sorted({s["name"] for s in sessions if in_bucket(s, "progress check in progress")}),
+        "progress_completed":     sorted({s["name"] for s in sessions if in_bucket(s, "progress check completed")}),
+    }
+    assessment_students = {s["name"] for s in sessions if s["assessment"]}
+
+    # ── Missing LP logic ───────────────────────────────────────────────────────
+    STUDY_KEYWORDS = [
+        "homework", "hw", "test", "quiz", "exam", "review", "study",
+        "studying", "school work", "schoolwork",
+    ]
+
+    def is_private(s):
+        return s["name"] in private_students
+
+    def looks_like_study(s):
+        combined = " ".join([
+            s.get("session_notes") or "",
+            s.get("schoolwork_description") or "",
+        ]).lower()
+        return any(kw in combined for kw in STUDY_KEYWORDS)
+
+    missing_lp_flagged   = []  # genuinely missing — show in red
+    missing_lp_study     = []  # likely study/hw — show with note
+
+    for s in sessions:
+        if s["lp_assigned"]:
+            continue
+        if s["name"] in assessment_students:
+            continue  # assessment explains missing LP
+        if looks_like_study(s):
+            missing_lp_study.append(s["name"])
+        else:
+            missing_lp_flagged.append(s["name"])
+
+    private_count = sum(1 for s in sessions if is_private(s))
+
     return {
         "report_date":        report_date.strftime("%A, %B %-d, %Y"),
         "center":             sessions[0]["center"].split(",")[0].strip() if sessions else "Center",
         "total_sessions":     total_sessions,
+        "private_sessions":   private_count,
         "unique_students":    unique_students,
         "total_pages":        total_pages,
         "avg_score":          avg_score,
@@ -206,9 +258,11 @@ def parse_report(xlsx_path: str, report_date: date = None) -> dict:
         "instructor_summary": instructor_summary,
         "att_buckets":        half_hour_buckets(sessions),
         "internal_notes":     [{"name": s["name"], "note": s["internal_notes"]} for s in sessions if s["internal_notes"]],
-        "missing_lp":         [s["name"] for s in sessions if not s["lp_assigned"]],
+        "missing_lp":         missing_lp_flagged,
+        "missing_lp_study":   missing_lp_study,
         "beat_goal":          [s["name"] for s in sessions if s["beat_goal"]],
         "below_goal":         [f"{s['name']} ({s['pages']}/{s['goal']} pages)" for s in sessions if not s["beat_goal"] and s["goal"] > 0],
+        "assessments":        assessments,
         "sessions":           sessions,
     }
 

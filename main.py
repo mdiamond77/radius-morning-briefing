@@ -51,14 +51,32 @@ def run(center_name: str = None, xlsx_path: str = None,
 
     # ── Step 3: Parse both reports ─────────────────────────────────────────────
     print("=== Step 3: Parsing reports ===")
-    data            = parse_report(xlsx_path, report_date)
     enrollment_data = parse_enrollment_report(enrollment_path, center_name, report_date)
+
+    # Build set of currently enrolled private students from enrollment data
+    private_students = set()
+    try:
+        from openpyxl import load_workbook as _lwb
+        _wb = _lwb(enrollment_path)
+        _ws = _wb.active
+        _hdrs = [c.value for c in _ws[1]]
+        for _row in _ws.iter_rows(min_row=2, values_only=True):
+            _r = dict(zip(_hdrs, _row))
+            if (_r.get("Center") or "").strip() == center_name and \
+               _r.get("Status") in ("Enrolled", "On Hold") and \
+               "private" in (_r.get("Membership Type") or "").lower():
+                _name = f"{(_r.get('Student First Name') or '').strip()} {(_r.get('Student Last Name') or '').strip()}".strip()
+                private_students.add(_name)
+    except Exception as e:
+        print(f"    Warning: could not build private student list — {e}")
+
+    data = parse_report(xlsx_path, report_date, private_students=private_students)
 
     if not data or not data.get("total_sessions"):
         print(f"    No sessions found for {center_name} on {report_date} — skipping email.")
         return
 
-    print(f"    DWP: {data['total_sessions']} sessions, {data['unique_students']} students")
+    print(f"    DWP: {data['total_sessions']} sessions, {data['unique_students']} students ({data.get('private_sessions', 0)} private)")
     print(f"    Enrollment: {len(enrollment_data['this_month'])} new this month, roster {enrollment_data['active_roster']}")
 
     # ── Step 4: Generate AI content ────────────────────────────────────────────

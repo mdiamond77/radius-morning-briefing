@@ -266,14 +266,19 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
     enrollment_data = enrollment_data or {}
 
     # ── Helpers ───────────────────────────────────────────────────────────────
-    def stat_box(label, value):
+    def stat_box(label, value, sub=None):
+        sub_html = f'<div style="font-size:10px;color:#999;margin-top:3px;">{sub}</div>' if sub else ""
         return f"""
         <td style="padding:0 6px 0 0;">
           <div style="border:1px solid #e0e0e0;border-radius:6px;padding:14px 10px;text-align:center;">
             <div style="font-size:12px;color:#666;margin-bottom:6px;">{label}</div>
             <div style="font-size:28px;font-weight:700;color:#1a1a1a;line-height:1;">{value}</div>
+            {sub_html}
           </div>
         </td>"""
+
+    private_count = data.get("private_sessions", 0)
+    private_note  = f"inc. {private_count} private" if private_count else None
 
     def section(title, subtitle=""):
         sub = f'<div style="font-size:12px;color:#777;font-style:italic;margin-top:3px;">{subtitle}</div>' if subtitle else ""
@@ -358,7 +363,51 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
     else:
         below_mathlete_html = ""
 
-    # ── Mastery rows ───────────────────────────────────────────────────────────
+    # ── Assessment section ─────────────────────────────────────────────────────
+    def assessment_cell(names):
+        if not names:
+            return '<span style="font-size:12px;font-style:italic;color:#999;">None today</span>'
+        return "".join(
+            f'<div style="font-size:13px;padding:2px 0;color:#1a1a1a;">{n}</div>'
+            for n in names
+        )
+
+    assessments = data.get("assessments", {})
+    any_assessments = any(assessments.get(k) for k in assessments)
+    if any_assessments:
+        assessment_html = f"""
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e8e8e8;border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          <thead>
+            <tr style="background:#fafafa;">
+              <th style="width:130px;padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid #e8e8e8;border-right:1px solid #e8e8e8;"></th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid #e8e8e8;border-right:1px solid #e8e8e8;">In progress</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid #e8e8e8;">Completed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:10px 12px;font-size:12px;font-weight:600;color:#1a1a1a;background:#fafafa;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;vertical-align:top;">Pre</td>
+              <td style="padding:10px 12px;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;vertical-align:top;">{assessment_cell(assessments.get("pre_in_progress", []))}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #e8e8e8;vertical-align:top;">{assessment_cell(assessments.get("pre_completed", []))}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-size:12px;font-weight:600;color:#1a1a1a;background:#fafafa;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;vertical-align:top;">Post</td>
+              <td style="padding:10px 12px;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;vertical-align:top;">{assessment_cell(assessments.get("post_in_progress", []))}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #e8e8e8;vertical-align:top;">{assessment_cell(assessments.get("post_completed", []))}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-size:12px;font-weight:600;color:#1a1a1a;background:#fafafa;border-right:1px solid #e8e8e8;vertical-align:top;">Progress Check</td>
+              <td style="padding:10px 12px;border-right:1px solid #e8e8e8;vertical-align:top;">{assessment_cell(assessments.get("progress_in_progress", []))}</td>
+              <td style="padding:10px 12px;vertical-align:top;">{assessment_cell(assessments.get("progress_completed", []))}</td>
+            </tr>
+          </tbody>
+        </table>"""
+        assessment_section = f"""
+    {section("Assessments", "Students with active or completed assessments today")}
+      {assessment_html}
+    {section_end()}"""
+    else:
+        assessment_section = ""
     mastery_rows = ""
     for m in data["mastery_list"]:
         topics_html = "".join(
@@ -469,7 +518,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
       {subh("Session overview")}
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
         <tr>
-          {stat_box("Total Sessions", data['total_sessions'])}
+          {stat_box("Total Sessions", data['total_sessions'], private_note)}
           {stat_box("Unique Students", data['unique_students'])}
         </tr>
       </table>
@@ -487,6 +536,9 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
         <tbody>{att_rows}</tbody>
       </table>
     {section_end()}
+
+    <!-- ASSESSMENTS -->
+    {assessment_section}
 
     <!-- ACADEMIC ACCOMPLISHMENTS -->
     {section("Academic Accomplishments", "Mastery checks trigger a celebratory parent text &mdash; ensure all are documented in DWP")}
@@ -549,6 +601,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
       {qc_section("QC Issues", "#2563eb", quality["qc"], "No parent communication concerns to report today")}
       {subh("Missing LP Assignments", "#16a34a")}
       {''.join(f'<div style="padding:6px 0;font-size:13px;font-weight:700;color:#dc2626;">{n}</div>' for n in data['missing_lp']) or ok("All sessions have LP tracking documented")}
+      {f'<div style="margin-top:8px;font-size:12px;font-weight:600;color:#854F0B;">Likely study/homework related (no LP expected):</div>' + ''.join(f'<div style="padding:3px 0;font-size:13px;color:#854F0B;">{n}</div>' for n in data.get('missing_lp_study', [])) if data.get('missing_lp_study') else ''}
     {section_end()}
 
   </div>
