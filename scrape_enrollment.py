@@ -90,50 +90,63 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         # ── Step 6: Download Excel export ─────────────────────────────────────
         print("[enroll-scrape] Downloading Excel export ...")
 
-        # Try standard download first
+        # Log ALL responses after the button click to see what the server returns
+        all_responses = []
+
+        def handle_response(response):
+            ct = response.headers.get("content-type", "")
+            cl = response.headers.get("content-length", "?")
+            all_responses.append({
+                "url": response.url,
+                "status": response.status,
+                "content_type": ct,
+                "content_length": cl,
+            })
+            if "excel" in ct or "spreadsheet" in ct or "octet" in ct or "download" in ct:
+                try:
+                    body = response.body()
+                    print(f"[enroll-scrape] FILE RESPONSE: {response.url} | {ct} | {len(body)} bytes")
+                    file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+                    with open(file_path, "wb") as f:
+                        f.write(body)
+                    print(f"[enroll-scrape] Saved to {file_path}")
+                except Exception as e:
+                    print(f"[enroll-scrape] Could not save: {e}")
+
+        page.on("response", handle_response)
+
+        # Try standard download
         try:
-            with page.expect_download(timeout=60000) as download_info:
+            with page.expect_download(timeout=30000) as download_info:
                 page.click("#btnExport")
             download = download_info.value
             file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
             download.save_as(file_path)
-            print(f"[enroll-scrape] Saved to {file_path}")
+            print(f"[enroll-scrape] Saved via download event to {file_path}")
             browser.close()
             return file_path
         except Exception as e1:
             print(f"[enroll-scrape] Standard download failed: {e1}")
 
-        # Intercept the export response directly
-        export_data = {"content": None}
+        # Wait for any intercepted file response
+        page.wait_for_timeout(10000)
 
-        def handle_response(response):
-            ct = response.headers.get("content-type", "")
-            if "excel" in ct or "spreadsheet" in ct or "octet" in ct:
-                try:
-                    export_data["content"] = response.body()
-                    print(f"[enroll-scrape] Intercepted response: {ct}, size: {len(export_data['content'])} bytes")
-                except Exception as e:
-                    print(f"[enroll-scrape] Could not read response body: {e}")
-
-        page.on("response", handle_response)
-        page.evaluate("document.getElementById('btnExport').click()")
-        page.wait_for_timeout(15000)
-
-        if export_data["content"]:
-            file_path = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
-            with open(file_path, "wb") as f:
-                f.write(export_data["content"])
-            print(f"[enroll-scrape] Saved intercepted file to {file_path}")
+        # Check if we caught a file via response interception
+        saved = os.path.join(DOWNLOAD_DIR, f"enrollment_{target_date.isoformat()}.xlsx")
+        if os.path.exists(saved):
+            print(f"[enroll-scrape] File was saved via response interception.")
             browser.close()
-            return file_path
+            return saved
+
+        # Log everything we saw
+        print(f"[enroll-scrape] All responses after button click ({len(all_responses)} total):")
+        for r in all_responses[-20:]:  # last 20
+            print(f"  [{r['status']}] {r['content_type'][:50] if r['content_type'] else 'no-ct'} | {r['url'][-80:]}")
 
         current_url = page.url
-        print(f"[enroll-scrape] Current URL after export click: {current_url}")
+        print(f"[enroll-scrape] Current URL: {current_url}")
         browser.close()
-        raise RuntimeError(
-            f"Could not download enrollment report — button clicked but no file received. "
-            f"Page URL: {current_url}"
-        )
+        raise RuntimeError("Could not download enrollment report — see logs above for details.")
 
         browser.close()
         raise RuntimeError(
