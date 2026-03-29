@@ -257,7 +257,7 @@ def parse_report(xlsx_path: str, report_date: date = None, private_students: set
         "mastery_list":       mastery_list,
         "instructor_summary": instructor_summary,
         "att_buckets":        half_hour_buckets(sessions),
-        "internal_notes":     [{"name": s["name"], "note": s["internal_notes"]} for s in sessions if s["internal_notes"]],
+        "internal_notes":     [{"name": s["name"], "note": s["internal_notes"], "instructor": s["instructor"]} for s in sessions if s["internal_notes"]],
         "missing_lp":         missing_lp_flagged,
         "missing_lp_study":   missing_lp_study,
         "beat_goal":          [s["name"] for s in sessions if s["beat_goal"]],

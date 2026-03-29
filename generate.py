@@ -29,13 +29,14 @@ def generate_executive_summary(data: dict) -> str:
     below_30   = [s for s in data["sessions"] if s["score"] is not None and s["score"] < 3.0]
     below_30_str = ", ".join(f"{s['name']} ({s['score']}/3)" for s in below_30) or "none"
 
-    prompt = f"""Write a 3-4 sentence executive summary paragraph for the {data['center']} Mathnasium \
+    prompt = f"""Write a bullet-point daily summary for the {data['center']} Mathnasium \
 center director. This will appear at the top of the nightly briefing email.
 
-Be specific — name students when relevant. Cover the most important points: standout performers, \
-attendance highlights, instructor workload, Mathlete score trends, and any flags or concerns. \
+Write 4-6 concise bullet points, one sentence each. Be specific — name students when relevant. \
+Cover the most important points: standout performers, attendance highlights, instructor workload, \
+Mathlete score trends, and any flags or concerns. \
 Do NOT mention mastery checks — those are covered separately in the Academic Accomplishments section. \
-Be direct and professional. Write only the paragraph — no greeting, subject line, or sign-off.
+Start each bullet with an em dash (–). Write only the bullets — no greeting, heading, or sign-off.
 
 Data from {data['report_date']}:
 - Sessions: {data['total_sessions']}, Unique students: {data['unique_students']}
