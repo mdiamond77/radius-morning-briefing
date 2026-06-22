@@ -167,14 +167,6 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         browser.close()
         raise RuntimeError("Could not download enrollment report — see logs above.")
 
-        browser.close()
-        raise RuntimeError(
-            "Could not download enrollment report — button clicked but no file received. "
-            f"Page URL after click: {current_url}"
-        )
-
-    return file_path
-
 
 if __name__ == "__main__":
     path = scrape_enrollment_report()
