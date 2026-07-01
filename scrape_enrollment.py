@@ -39,17 +39,20 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         # ── Step 1: Log in ────────────────────────────────────────────────────
         print("[enroll-scrape] Logging into Radius ...")
         page.goto(RADIUS_LOGIN_URL)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_selector("#UserName", timeout=30000)
         page.fill("#UserName", RADIUS_USERNAME)
         page.fill("#Password", RADIUS_PASSWORD)
         page.click("#login")
-        page.wait_for_load_state("networkidle")
+        # Wait for post-login nav rather than networkidle (Radius keeps persistent connections)
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(2000)
         print("[enroll-scrape] Logged in.")
 
         # ── Step 2: Navigate to enrollment report ─────────────────────────────
         print("[enroll-scrape] Navigating to enrollment report ...")
         page.goto(RADIUS_ENROLLMENT_URL)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(3000)
 
         # ── Step 3: Set date range ────────────────────────────────────────────
         print(f"[enroll-scrape] Setting date range {start_str} to {end_str} ...")
@@ -82,7 +85,7 @@ def scrape_enrollment_report(target_date: date = None) -> str:
         # ── Step 5: Click Search ──────────────────────────────────────────────
         print("[enroll-scrape] Running search ...")
         page.click("#btnsearch")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
         page.wait_for_timeout(8000)
 
         # Wait for the export button to become truly enabled
