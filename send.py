@@ -222,11 +222,15 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
         if s["score"] is not None and s["score"] < 3.0
     ]
     if below_mathlete:
+        def _instructor_tag(inst):
+            if not inst:
+                return ""
+            return f'<span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">({inst})</span>'
+
         below_rows = "".join(
             f'<tr>'
             f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">'
-            f'{s["name"]}'
-            f'{"<span style=\\"font-size:11px;font-weight:400;color:#888;margin-left:6px;\\">("+s["instructor"]+")</span>" if s["instructor"] else ""}'
+            f'{s["name"]}{_instructor_tag(s["instructor"])}'
             f'</td>'
             f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">'
             f'<span style="display:inline-block;background:#fef9c3;color:#713f12;border:1px solid #fde047;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600;">{s["score"]}/3</span>'
