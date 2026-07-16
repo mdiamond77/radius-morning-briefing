@@ -224,7 +224,10 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
     if below_mathlete:
         below_rows = "".join(
             f'<tr>'
-            f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{s["name"]}</td>'
+            f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">'
+            f'{s["name"]}'
+            f'{"<span style=\\"font-size:11px;font-weight:400;color:#888;margin-left:6px;\\">("+s["instructor"]+")</span>" if s["instructor"] else ""}'
+            f'</td>'
             f'<td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">'
             f'<span style="display:inline-block;background:#fef9c3;color:#713f12;border:1px solid #fde047;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600;">{s["score"]}/3</span>'
             f'</td>'
@@ -383,6 +386,11 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
 
   <div style="padding:24px 28px;">
 
+    <!-- INTERNAL NOTES -->
+    {section("Internal Notes", "Instructor-flagged items for the Center Director")}
+      {internal_html}
+    {section_end()}
+
     <!-- DAILY SUMMARY (AI) -->
     {section("Daily Summary", "AI-generated overview of today&rsquo;s sessions")}
       <p style="font-size:13px;color:#555;margin-bottom:10px;font-style:italic;">&#9679; AI-generated</p>
@@ -393,11 +401,6 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
             if line.strip() and line.strip() not in ("-", "–", "—")
         )}
       </div>
-    {section_end()}
-
-    <!-- INTERNAL NOTES -->
-    {section("Internal Notes", "Instructor-flagged items for the Center Director")}
-      {internal_html}
     {section_end()}
 
     <!-- ENROLLMENTS -->
