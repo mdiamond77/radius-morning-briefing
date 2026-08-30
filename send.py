@@ -339,10 +339,12 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
     for i in data["instructor_summary"]:
         cd = i.get("is_center_director", False)
         name_html = f'{i["name"]} <span style="font-size:11px;font-weight:400;color:#888;font-style:italic;">(CD — excluded from ratios)</span>' if cd else i["name"]
+        avg_pages_html = f"{i['avg_pages']:.1f}" if i.get("avg_pages") is not None else "&mdash;"
         instructor_rows += f"""
         <tr style="{'opacity:0.7;' if cd else ''}">
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{name_html}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">{i['count']}</td>
+          <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">{avg_pages_html}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#666;">{', '.join(i['students'])}</td>
         </tr>"""
 
@@ -472,6 +474,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
           <tr style="background:#fafafa;">
             <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Instructor</th>
             <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Students</th>
+            <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Avg Pages</th>
             <th style="text-align:left;padding:6px 8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Names</th>
           </tr>
         </thead>

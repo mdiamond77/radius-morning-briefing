@@ -180,21 +180,25 @@ def parse_report(xlsx_path: str, report_date: date = None, private_students: set
     for s in sessions:
         instructors = [i.strip() for i in s["instructor"].split(",") if i.strip()]
         for inst in instructors:
-            instructor_map[inst].append(s["name"])
+            instructor_map[inst].append(s)
         if len(instructors) > 1:
             team_taught.add(s["name"])
 
     instructor_summary = []
-    for inst, students in sorted(instructor_map.items(), key=lambda x: -len(x[1])):
-        solo   = [st for st in students if st not in team_taught]
-        teamed = [st for st in students if st in team_taught]
+    for inst, inst_sessions in sorted(instructor_map.items(), key=lambda x: -len(x[1])):
+        names  = [s["name"] for s in inst_sessions]
+        solo   = [n for n in names if n not in team_taught]
+        teamed = [n for n in names if n in team_taught]
         parts  = []
         if solo:   parts.append(f"{len(solo)} solo")
         if teamed: parts.append(f"{len(teamed)} team-taught")
+        productive = [s["pages"] for s in inst_sessions if s["pages"] > 0]
+        avg_pages  = round(sum(productive) / len(productive), 1) if productive else None
         instructor_summary.append({
             "name":               inst,
-            "count":              len(students),
-            "students":           students,
+            "count":              len(inst_sessions),
+            "students":           [f'{s["name"]} ({s["pages"]})' for s in inst_sessions],
+            "avg_pages":          avg_pages,
             "detail":             ", ".join(parts),
             "is_center_director": inst.lower() in CENTER_DIRECTORS,
         })
