@@ -335,6 +335,16 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
         internal_html = ok("No internal notes today &mdash; all systems ran smoothly!")
 
     # ── Instructor rows ────────────────────────────────────────────────────────
+    LOW_PAGES_THRESHOLD = 4  # a session below this many pages is flagged red
+
+    def student_pages_html(students):
+        parts = []
+        for st in students:
+            low = st["pages"] < LOW_PAGES_THRESHOLD
+            style = "color:#c8271e;font-weight:700;" if low else ""
+            parts.append(f'<span style="{style}">{st["name"]} ({st["pages"]})</span>')
+        return ", ".join(parts)
+
     instructor_rows = ""
     for i in data["instructor_summary"]:
         cd = i.get("is_center_director", False)
@@ -345,7 +355,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:13px;">{name_html}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">{i['count']}</td>
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:13px;">{avg_pages_html}</td>
-          <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#666;">{', '.join(i['students'])}</td>
+          <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#666;">{student_pages_html(i['students'])}</td>
         </tr>"""
 
     # ── Session quality ────────────────────────────────────────────────────────

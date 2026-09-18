@@ -197,7 +197,7 @@ def parse_report(xlsx_path: str, report_date: date = None, private_students: set
         instructor_summary.append({
             "name":               inst,
             "count":              len(inst_sessions),
-            "students":           [f'{s["name"]} ({s["pages"]})' for s in inst_sessions],
+            "students":           [{"name": s["name"], "pages": s["pages"]} for s in inst_sessions],
             "avg_pages":          avg_pages,
             "detail":             ", ".join(parts),
             "is_center_director": inst.lower() in CENTER_DIRECTORS,
