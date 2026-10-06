@@ -14,12 +14,14 @@ Use local file: python main.py --xlsx path/to/dwp.xlsx --enrollment path/to/enro
 
 import argparse
 import os
+import subprocess
 from datetime import date, timedelta
 
 from parse            import parse_report
 from parse_enrollment import parse_enrollment_report
 from generate         import generate_all
 from send             import send_report
+from history          import append_entry, get_recent
 
 
 def run(center_name: str = None, xlsx_path: str = None,
@@ -84,9 +86,37 @@ def run(center_name: str = None, xlsx_path: str = None,
     ai = generate_all(data)
     print("    Executive summary, standouts, and QC analysis complete.")
 
+    # Load history before appending today so the email shows the prior 7 days
+    history = get_recent(center_name, days=7)
+
     # ── Step 5: Send ───────────────────────────────────────────────────────────
     print("=== Step 5: Sending email ===")
-    send_report(data, ai, enrollment_data, report_date)
+    send_report(data, ai, enrollment_data, report_date, history=history)
+
+    # ── Step 6: Persist daily stats to history.json ────────────────────────────
+    print("=== Step 6: Updating history ===")
+    append_entry(
+        center         = center_name,
+        report_date    = report_date,
+        total_sessions = data["total_sessions"],
+        total_pages    = data["total_pages"],
+        avg_score      = data["avg_score"],
+    )
+    if os.environ.get("GITHUB_ACTIONS"):
+        try:
+            subprocess.run(["git", "config", "user.name",  "github-actions[bot]"], check=True)
+            subprocess.run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], check=True)
+            subprocess.run(["git", "add", "history.json"], check=True)
+            result = subprocess.run(["git", "diff", "--cached", "--quiet"])
+            if result.returncode != 0:
+                subprocess.run(["git", "commit", "-m", f"chore: update history for {center_name} {report_date} [skip ci]"], check=True)
+                subprocess.run(["git", "push"], check=True)
+                print("[history] Committed and pushed history.json")
+            else:
+                print("[history] No changes to history.json")
+        except Exception as e:
+            print(f"[history] Warning: could not commit history — {e}")
+
     print("=== Done. ===")
 
 

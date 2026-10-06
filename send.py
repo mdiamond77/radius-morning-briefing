@@ -142,8 +142,50 @@ def _enrollment_section(e: dict) -> str:
     return stat_row + standard + private + summer + plan_section
 
 
-def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
+def _history_block(history: list[dict]) -> str:
+    """Render the 7-day avg pages trend at the top of the Instructors section."""
+    if not history:
+        return ""
+    max_pages = max((e["avg_pages"] for e in history), default=1) or 1
+    rows = ""
+    for e in history:
+        pct  = round(e["avg_pages"] / max_pages * 100)
+        date_label = e["date"][5:]  # MM-DD
+        score_str  = f"{e['avg_score']}/3" if e["avg_score"] else "—"
+        rows += f"""
+        <tr>
+          <td style="padding:6px 8px;font-size:12px;color:#555;white-space:nowrap;">{date_label}</td>
+          <td style="padding:6px 8px;width:130px;">
+            <div style="background:#f0f0f0;border-radius:3px;height:10px;overflow:hidden;">
+              <div style="background:#c8271e;opacity:0.6;height:100%;width:{pct}%;border-radius:3px;"></div>
+            </div>
+          </td>
+          <td style="padding:6px 8px;font-size:13px;font-weight:700;text-align:center;">{e['avg_pages']}</td>
+          <td style="padding:6px 8px;font-size:12px;color:#666;text-align:center;">{e['sessions']} sessions</td>
+          <td style="padding:6px 8px;font-size:12px;color:#666;text-align:center;">{score_str}</td>
+        </tr>"""
+    return f"""
+    <div style="margin-bottom:20px;">
+      <p style="font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 8px;">7-day avg pages per session</p>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr style="background:#fafafa;">
+            <th style="text-align:left;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.3px;">Date</th>
+            <th style="padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;width:130px;"></th>
+            <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.3px;">Avg Pages</th>
+            <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.3px;">Volume</th>
+            <th style="text-align:center;padding:6px 8px;font-size:11px;color:#888;border-bottom:2px solid #e0e0e0;text-transform:uppercase;letter-spacing:0.3px;">Avg Score</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>"""
+
+
+def render_email(data: dict, ai: dict, enrollment_data: dict = None,
+                 history: list[dict] = None) -> str:
     enrollment_data = enrollment_data or {}
+    history_block   = _history_block(history or [])
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def stat_box(label, value, sub=None):
@@ -479,6 +521,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
 
     <!-- INSTRUCTORS -->
     {section("Instructors", "Workload breakdown")}
+      {history_block}
       <table width="100%" cellpadding="0" cellspacing="0">
         <thead>
           <tr style="background:#fafafa;">
@@ -517,13 +560,14 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None) -> str:
 </html>"""
 
 
-def send_report(data: dict, ai: dict, enrollment_data: dict = None, report_date: date = None) -> None:
+def send_report(data: dict, ai: dict, enrollment_data: dict = None,
+                report_date: date = None, history: list[dict] = None) -> None:
     if report_date is None:
         report_date = date.today()
 
     recipients = [r.strip() for r in RECIPIENTS.split(",") if r.strip()]
     subject    = f"Daily Summary \u2014 {CENTER_NAME} \u2014 {data['report_date']}"
-    html_body  = render_email(data, ai, enrollment_data or {})
+    html_body  = render_email(data, ai, enrollment_data or {}, history or [])
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject

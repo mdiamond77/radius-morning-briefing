@@ -9,6 +9,8 @@ jobs:
   teaneck-briefing:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -44,6 +46,8 @@ jobs:
   englewood-briefing:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
