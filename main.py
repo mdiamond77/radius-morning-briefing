@@ -110,6 +110,8 @@ def run(center_name: str = None, xlsx_path: str = None,
             result = subprocess.run(["git", "diff", "--cached", "--quiet"])
             if result.returncode != 0:
                 subprocess.run(["git", "commit", "-m", f"chore: update history for {center_name} {report_date} [skip ci]"], check=True)
+                # Pull rebase first in case the parallel job already pushed
+                subprocess.run(["git", "pull", "--rebase"], check=True)
                 subprocess.run(["git", "push"], check=True)
                 print("[history] Committed and pushed history.json")
             else:
