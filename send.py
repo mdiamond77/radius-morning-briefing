@@ -22,6 +22,22 @@ LOGO_URL = "https://raw.githubusercontent.com/mdmathnasiums/radius-morning-brief
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+def ratio_cell_colors(students: int, instructors: int) -> tuple:
+    """(background, text) for a ratio cell, using the same tiers as the tutoring heatmap."""
+    if students == 0:
+        return "#f0f0f0", "#1a1a1a"
+    if instructors == 0:
+        return "#d1d5db", "#1a1a1a"
+    ratio = students / instructors
+    if ratio < 2.25:
+        return "#86efac", "#1a1a1a"
+    if ratio < 2.75:
+        return "#fde047", "#1a1a1a"
+    if ratio <= 3.0:
+        return "#fca5a5", "#1a1a1a"
+    return "#ef4444", "#ffffff"
+
+
 def _enrollment_section(e: dict) -> str:
     """Render the enrollment section HTML."""
     if not e:
@@ -216,13 +232,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
         pct   = round(b["count"] / max_s * 100)
         ratio = b.get("ratio")
         ratio_str = f"{ratio}:1" if ratio else "—"
-        # color-code ratio: ≤2 green, ≤3 amber, >3 red
-        if ratio and ratio <= 2.0:
-            ratio_color = "#166534"
-        elif ratio and ratio <= 3.0:
-            ratio_color = "#854F0B"
-        else:
-            ratio_color = "#991b1b"
+        ratio_bg, ratio_fg = ratio_cell_colors(b["count"], b.get("instructors") or 0)
 
         peak_tag = ' <span style="background:#c8271e;color:#fff;border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;">Peak</span>' if b["peak"] else ""
         bar_opacity = "1.0" if b["peak"] else "0.35"
@@ -239,7 +249,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
           </td>
           <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;">{b['count']}</td>
           <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;">{b.get('instructors', '—')}</td>
-          <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;color:{ratio_color};">{ratio_str}</td>
+          <td style="padding:8px 8px 2px;font-size:13px;font-weight:700;text-align:center;background:{ratio_bg};color:{ratio_fg};">{ratio_str}</td>
         </tr>
         <tr>
           <td colspan="5" style="padding:0 8px 8px 8px;font-size:11px;color:#999;border-bottom:1px solid #f5f5f5;">
