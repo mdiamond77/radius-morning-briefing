@@ -50,49 +50,95 @@ def parse_lp(lp_str: str) -> tuple[list[str], list[str]]:
     return mastered, worked
 
 
+# People who work the floor but don't count toward student:instructor ratios
+# (owner + center directors). Their students still count. Same list as the
+# tutoring heatmap (mathnasium-heatmap/dwp_actuals.py).
+RATIO_EXCLUDED_INSTRUCTORS = {"matthew diamond", "elizabeth anacleto", "samba taha"}
+INSTRUCTOR_GAP_MINUTES = 120     # gap between an instructor's sessions still counted as "there"
+INSTRUCTOR_MIN_OVERLAP = 15      # instructor must be present 15+ min of a half hour
+
+
+def slot_limit(minutes: int) -> int:
+    """How many half-hour buckets a session of this length counts toward."""
+    if minutes < 75:
+        return 2
+    if minutes < 105:
+        return 3
+    return 4
+
+
+def _overlap(a0: int, a1: int, b0: int, b1: int) -> int:
+    return max(0, min(a1, b1) - max(a0, b0))
+
+
+def buckets_for_session(start_min: int, end_min: int) -> list[int]:
+    """Half-hour bucket starts (minutes past midnight) a session counts in:
+    the run of slot_limit() consecutive buckets holding the most session
+    minutes (earlier run wins a tie), dropping buckets it doesn't touch.
+    e.g. 5:14-6:26 (72 min) -> 5:30 and 6:00, not 5:00."""
+    touched = [(b, _overlap(start_min, end_min, b, b + 30))
+               for b in range((start_min // 30) * 30, end_min, 30)]
+    n = slot_limit(end_min - start_min)
+    best = max(range(max(1, len(touched) - n + 1)),
+               key=lambda i: (sum(m for _, m in touched[i:i + n]), -i))
+    return [b for b, m in touched[best:best + n] if m > 0]
+
+
+def _instructor_blocks(sessions: list[dict]) -> dict[str, list[list[int]]]:
+    """instructor -> [start, end] blocks they were on the floor: first session
+    start to last session end, bridging gaps up to INSTRUCTOR_GAP_MINUTES."""
+    spans = defaultdict(list)
+    for s in sessions:
+        for inst in [i.strip() for i in s["instructor"].split(",") if i.strip()]:
+            if inst.lower() not in RATIO_EXCLUDED_INSTRUCTORS:
+                spans[inst].append((s["start_min"], s["end_min"]))
+    blocks = {}
+    for inst, iv in spans.items():
+        iv.sort()
+        merged = [list(iv[0])]
+        for a, b in iv[1:]:
+            if a - merged[-1][1] <= INSTRUCTOR_GAP_MINUTES:
+                merged[-1][1] = max(merged[-1][1], b)
+            else:
+                merged.append([a, b])
+        blocks[inst] = merged
+    return blocks
+
+
 def half_hour_buckets(sessions: list[dict], center: str = "") -> list[dict]:
     """Build half-hour buckets with student count, instructor count, and ratio.
-    Center directors are excluded from instructor counts."""
-
-    # Center directors — excluded from ratio calculations
-    CENTER_DIRECTORS = {"elizabeth anacleto", "samba taha"}
-
-    all_starts = [s["start_min"] for s in sessions if s["start_min"]]
-    all_ends   = [s["end_min"]   for s in sessions if s["end_min"]]
-    if not all_starts:
+    Counting rules match the tutoring heatmap's Actual view."""
+    sessions = [s for s in sessions
+                if s["start_min"] and s["end_min"] and s["end_min"] > s["start_min"]]
+    if not sessions:
         return []
 
-    earliest = (min(all_starts) // 30) * 30
-    latest   = ((max(all_ends) + 29) // 30) * 30
+    students_by_bucket = defaultdict(set)
+    for s in sessions:
+        for b in buckets_for_session(s["start_min"], s["end_min"]):
+            students_by_bucket[b].add(s["name"])
+    blocks = _instructor_blocks(sessions)
 
     buckets = []
-    for bucket_start in range(earliest, latest, 30):
+    for bucket_start in sorted(students_by_bucket):
         bucket_end = bucket_start + 30
-
-        students_in    = set()
-        instructors_in = set()
-
-        for s in sessions:
-            if s["start_min"] and s["end_min"] \
-               and s["start_min"] < bucket_end \
-               and s["end_min"] > bucket_start:
-                students_in.add(s["name"])
-                for inst in [i.strip() for i in s["instructor"].split(",") if i.strip()]:
-                    if inst.lower() not in CENTER_DIRECTORS:
-                        instructors_in.add(inst)
-
-        if students_in:
-            sc = len(students_in)
-            ic = len(instructors_in)
-            ratio = round(sc / ic, 1) if ic else None
-            buckets.append({
-                "label":       f"{fmt_time(bucket_start)} \u2013 {fmt_time(bucket_end)}",
-                "count":       sc,
-                "instructors": ic,
-                "ratio":       ratio,
-                "students":    sorted(students_in),
-                "peak":        False,
-            })
+        students_in = students_by_bucket[bucket_start]
+        instructors_in = {
+            inst for inst, merged in blocks.items()
+            if any(_overlap(a, b, bucket_start, bucket_end) >= INSTRUCTOR_MIN_OVERLAP
+                   for a, b in merged)
+        }
+        sc = len(students_in)
+        ic = len(instructors_in)
+        ratio = round(sc / ic, 1) if ic else None
+        buckets.append({
+            "label":       f"{fmt_time(bucket_start)} \u2013 {fmt_time(bucket_end)}",
+            "count":       sc,
+            "instructors": ic,
+            "ratio":       ratio,
+            "students":    sorted(students_in),
+            "peak":        False,
+        })
 
     if buckets:
         max_count = max(b["count"] for b in buckets)
@@ -173,7 +219,6 @@ def parse_report(xlsx_path: str, report_date: date = None, private_students: set
     mastery_list  = [{"name": s["name"], "topics": s["mastered"]} for s in sessions if s["mastered"]]
     total_mastery = sum(len(m["topics"]) for m in mastery_list)
 
-    CENTER_DIRECTORS = {"elizabeth anacleto", "samba taha"}
 
     instructor_map = defaultdict(list)
     team_taught    = set()
@@ -200,7 +245,7 @@ def parse_report(xlsx_path: str, report_date: date = None, private_students: set
             "students":           [{"name": s["name"], "pages": s["pages"]} for s in inst_sessions],
             "avg_pages":          avg_pages,
             "detail":             ", ".join(parts),
-            "is_center_director": inst.lower() in CENTER_DIRECTORS,
+            "is_center_director": inst.lower() in RATIO_EXCLUDED_INSTRUCTORS,
         })
 
     # ── Assessment buckets ─────────────────────────────────────────────────────

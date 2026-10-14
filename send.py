@@ -392,7 +392,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
     instructor_rows = ""
     for i in data["instructor_summary"]:
         cd = i.get("is_center_director", False)
-        name_html = f'{i["name"]} <span style="font-size:11px;font-weight:400;color:#888;font-style:italic;">(CD — excluded from ratios)</span>' if cd else i["name"]
+        name_html = f'{i["name"]} <span style="font-size:11px;font-weight:400;color:#888;font-style:italic;">(excluded from ratios)</span>' if cd else i["name"]
         avg_pages_html = f"{i['avg_pages']:.1f}" if i.get("avg_pages") is not None else "&mdash;"
         instructor_rows += f"""
         <tr style="{'opacity:0.7;' if cd else ''}">
