@@ -169,6 +169,12 @@
       "sessions": 23,
       "avg_pages": 7.0,
       "avg_score": 2.9
+    },
+    {
+      "date": "2026-10-19",
+      "sessions": 27,
+      "avg_pages": 6.5,
+      "avg_score": 3.0
     }
   ]
 }
