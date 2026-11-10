@@ -331,9 +331,8 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
           </tbody>
         </table>"""
         assessment_section = f"""
-    {section("Assessments", "Students with active or completed assessments today")}
-      {assessment_html}
-    {section_end()}"""
+      {subh("Assessments")}
+      {assessment_html}"""
     else:
         assessment_section = ""
     mastery_rows = ""
@@ -402,27 +401,25 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
           <td style="padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#666;">{student_pages_html(i['students'])}</td>
         </tr>"""
 
-    # ── Session quality ────────────────────────────────────────────────────────
+    # ── Behavioral concerns (shown under Internal Notes only if present) ─────────
     quality = ai.get("quality", {"academic": [], "behavioral": [], "qc": []})
-
-    def qc_box(label, count):
-        color = "#c8271e" if count > 0 else "#166534"
-        return f"""
-        <td style="padding:0 6px 0 0;">
-          <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 10px;text-align:center;">
-            <div style="font-size:11px;color:#666;margin-bottom:4px;">{label}</div>
-            <div style="font-size:26px;font-weight:700;color:{color};">{count}</div>
-          </div>
-        </td>"""
-
-    def qc_section(title, color, items, empty):
-        html = subh(title, color)
-        if items:
-            for item in items:
-                html += f'<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><div style="font-weight:700;font-size:13px;">{item["name"]}</div><div style="font-size:12px;color:#555;margin-top:2px;">{item["reason"]}</div></div>'
-        else:
-            html += ok(empty)
-        return html
+    behavioral = quality.get("behavioral", [])
+    if behavioral:
+        rows = "".join(
+            f'<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">'
+            f'<div style="font-weight:700;font-size:13px;">{item["name"]}</div>'
+            f'<div style="font-size:12px;color:#555;margin-top:2px;">{item["reason"]}</div>'
+            f'</div>'
+            for item in behavioral
+        )
+        behavioral_html = f"""
+        <div style="margin-top:16px;border-top:2px solid #fee2e2;padding-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">&#9888; Behavioral Concerns</div>
+          <p style="font-size:12px;color:#888;font-style:italic;margin:0 0 8px;">&#9679; AI-generated</p>
+          {rows}
+        </div>"""
+    else:
+        behavioral_html = ""
 
     # ── Full HTML ──────────────────────────────────────────────────────────────
     return f"""<!DOCTYPE html>
@@ -449,6 +446,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
     <!-- INTERNAL NOTES -->
     {section("Internal Notes", "Instructor-flagged items for the Center Director")}
       {internal_html}
+      {behavioral_html}
     {section_end()}
 
     <!-- DAILY SUMMARY (AI) -->
@@ -492,9 +490,6 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
       </table>
     {section_end()}
 
-    <!-- ASSESSMENTS -->
-    {assessment_section}
-
     <!-- ACADEMIC ACCOMPLISHMENTS -->
     {section("Academic Accomplishments", "Mastery checks trigger a celebratory parent text &mdash; ensure all are documented in DWP")}
       {subh("Today&rsquo;s learning metrics")}
@@ -506,19 +501,7 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
         </tr>
       </table>
       {below_mathlete_html}
-      {subh("Mastery achievements")}
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <thead>
-          <tr style="background:#fafafa;">
-            <th style="text-align:left;padding:8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;width:35%;">Student</th>
-            <th style="text-align:left;padding:8px;font-size:12px;color:#555;border-bottom:2px solid #e0e0e0;">Topics Mastered</th>
-          </tr>
-        </thead>
-        <tbody>{mastery_rows}</tbody>
-      </table>
-      {subh("Standout sessions", mt=18)}
-      <p style="font-size:13px;color:#555;margin-bottom:6px;font-style:italic;">&#9679; AI-generated</p>
-      {standouts_html}
+      {assessment_section}
     {section_end()}
 
     <!-- INSTRUCTORS -->
@@ -537,24 +520,6 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
       </table>
     {section_end()}
 
-    <!-- SESSION QUALITY -->
-    {section("Session Quality", "AI-detected flags from session notes")}
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-        <tr>
-          {qc_box("Academic", len(quality["academic"]))}
-          {qc_box("Behavioral", len(quality["behavioral"]))}
-          {qc_box("QC Issues", len(quality["qc"]))}
-          {qc_box("Missing LP", len(data["missing_lp"]))}
-        </tr>
-      </table>
-      <p style="font-size:13px;color:#555;margin-bottom:6px;font-style:italic;">&#9679; AI-generated</p>
-      {qc_section("Academic Concerns", "#d97706", quality["academic"], "No academic concerns to report today")}
-      {qc_section("Behavioral Concerns", "#dc2626", quality["behavioral"], "No behavioral concerns to report today")}
-      {qc_section("QC Issues", "#2563eb", quality["qc"], "No parent communication concerns to report today")}
-      {subh("Missing LP Assignments", "#16a34a")}
-      {''.join(f'<div style="padding:6px 0;font-size:13px;font-weight:700;color:#dc2626;">{n}</div>' for n in data['missing_lp']) or ok("All sessions have LP tracking documented")}
-      {f'<div style="margin-top:8px;font-size:12px;font-weight:600;color:#854F0B;">Likely study/homework related (no LP expected):</div>' + ''.join(f'<div style="padding:3px 0;font-size:13px;color:#854F0B;">{n}</div>' for n in data.get('missing_lp_study', [])) if data.get('missing_lp_study') else ''}
-    {section_end()}
 
   </div>
 </div>
