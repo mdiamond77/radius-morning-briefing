@@ -331,6 +331,12 @@
       "sessions": 23,
       "avg_pages": 6.0,
       "avg_score": 2.9
+    },
+    {
+      "date": "2026-11-10",
+      "sessions": 24,
+      "avg_pages": 6.2,
+      "avg_score": 3.0
     }
   ]
 }
