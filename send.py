@@ -518,6 +518,9 @@ def render_email(data: dict, ai: dict, enrollment_data: dict = None,
         </thead>
         <tbody>{instructor_rows}</tbody>
       </table>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;"><tr>
+        {stat_box("Avg Pages / Session", f"{data['total_pages']/data['total_sessions']:.1f}" if data['total_sessions'] else "&mdash;")}
+      </tr></table>
     {section_end()}
 
 
