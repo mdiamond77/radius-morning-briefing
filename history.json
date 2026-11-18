@@ -183,12 +183,6 @@
   ],
   "Englewood": [
     {
-      "date": "2026-10-01",
-      "sessions": 20,
-      "avg_pages": 5.7,
-      "avg_score": 3.0
-    },
-    {
       "date": "2026-10-04",
       "sessions": 19,
       "avg_pages": 5.2,
@@ -361,6 +355,12 @@
       "sessions": 26,
       "avg_pages": 5.7,
       "avg_score": 2.8
+    },
+    {
+      "date": "2026-11-17",
+      "sessions": 22,
+      "avg_pages": 7.2,
+      "avg_score": 3.0
     }
   ]
 }
