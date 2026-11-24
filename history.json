@@ -1,12 +1,6 @@
 {
   "Teaneck": [
     {
-      "date": "2026-10-07",
-      "sessions": 21,
-      "avg_pages": 7.6,
-      "avg_score": 3.0
-    },
-    {
       "date": "2026-10-08",
       "sessions": 25,
       "avg_pages": 8.2,
@@ -178,6 +172,12 @@
       "date": "2026-11-22",
       "sessions": 27,
       "avg_pages": 7.7,
+      "avg_score": 3.0
+    },
+    {
+      "date": "2026-11-23",
+      "sessions": 20,
+      "avg_pages": 8.3,
       "avg_score": 3.0
     }
   ],
