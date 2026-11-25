@@ -1,12 +1,6 @@
 {
   "Teaneck": [
     {
-      "date": "2026-10-08",
-      "sessions": 25,
-      "avg_pages": 8.2,
-      "avg_score": 3.0
-    },
-    {
       "date": "2026-10-11",
       "sessions": 25,
       "avg_pages": 6.1,
@@ -179,6 +173,12 @@
       "sessions": 20,
       "avg_pages": 8.3,
       "avg_score": 3.0
+    },
+    {
+      "date": "2026-11-24",
+      "sessions": 24,
+      "avg_pages": 9.0,
+      "avg_score": 2.9
     }
   ],
   "Englewood": [
